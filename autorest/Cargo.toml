@@ -5,3 +5,5 @@ authors = ["jeremyletang <letang.jeremy@gmail.com>"]
 
 [dependencies]
 postgres = "0.13"
+serde = "0.8.18"
+serde_json = "0.8.3"

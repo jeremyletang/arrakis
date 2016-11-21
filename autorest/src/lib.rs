@@ -6,73 +6,25 @@
 // except according to those terms.
 
 extern crate postgres;
+extern crate serde;
+extern crate serde_json;
 
+pub mod infer_schema;
+pub mod schema;
+
+use infer_schema::infer_schema;
 use postgres::{Connection, TlsMode};
-use std::error::Error;
+use schema::Table;
 use std::collections::HashMap;
-use postgres::rows::Row;
+use std::error::Error;
 
-pub use postgres::params::{ConnectParams, IntoConnectParams, UserInfo,
-                           ConnectTarget};
-
-#[derive(Debug)]
-pub struct Column {
-    name: String,
-    default: Option<String>,
-    is_nullable: bool,
-    data_type: String,
-    character_maximum_length: Option<i32>,
-    is_updatable: bool,
-}
-
-#[derive(Debug)]
-pub struct Table {
-    name: String,
-    columns: HashMap<String, Column>,
-}
+pub use postgres::params::{
+    ConnectParams, IntoConnectParams, UserInfo, ConnectTarget};
 
 pub struct AutoRest {
     conn: Connection,
     database: String,
     tables: HashMap<String, Table>,
-}
-
-const infer_schema_query: &'static str =
-    "select table_name, column_name, column_default, is_nullable, udt_name, \
-     character_maximum_length, is_updatable
-     FROM INFORMATION_SCHEMA.COLUMNS \
-     WHERE table_schema NOT IN ('information_schema', 'pg_catalog')";
-
-fn as_bool(s: String) -> bool {
-    match &*s {
-        "YES" => true,
-        "NO" => false,
-        _ => unreachable!(),
-    }
-}
-
-fn get_column(row: &Row) -> Column {
-    Column {
-        name: row.get(1),
-        default: row.get(2),
-        is_nullable: as_bool(row.get(3)),
-        data_type: row.get(4),
-        character_maximum_length: row.get(5),
-        is_updatable: as_bool(row.get(6)),
-    }
-}
-
-fn infer_schema(conn: &Connection, database: &str) -> HashMap<String, Table> {
-    let mut tables: HashMap<String, Table> = HashMap::new();
-    for row in &conn.query(&*infer_schema_query, &[]).unwrap() {
-        let table_name: String = row.get(0);
-        if tables.get(&table_name).is_none() {
-            tables.insert(table_name.clone(),
-                          Table{name: table_name.clone(), columns: HashMap::new()});
-        }
-        tables.get_mut(&table_name).unwrap().columns.insert(row.get(1), get_column(&row));
-    }
-    return tables;
 }
 
 impl AutoRest {
@@ -85,6 +37,9 @@ impl AutoRest {
             Err(e) => return Err(format!("{}, {}", e.description(), e.cause().unwrap()))
         };
         let tables = infer_schema(&conn, &*database);
+        for (k, v) in &tables {
+            println!("{:?} => {:?}\n", k, v);
+        }
         Ok(AutoRest {
             conn: conn,
             database: database,
