@@ -1,0 +1,7 @@
+[workspace]
+members = [
+  "autorest",
+  "autorest_iron",
+  "autorest_nickel",
+  "autorest_standalone",
+]
