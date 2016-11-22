@@ -6,7 +6,7 @@
 // except according to those terms.
 
 use std::collections::HashMap;
-use postgres::types::{Oid, Type};
+use postgres::types::Type;
 
 #[derive(Debug)]
 pub struct Column {

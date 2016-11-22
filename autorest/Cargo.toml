@@ -7,3 +7,5 @@ authors = ["jeremyletang <letang.jeremy@gmail.com>"]
 postgres = "0.13"
 serde = "0.8.18"
 serde_json = "0.8.3"
+r2d2 = "0.7.1"
+r2d2_postgres = "0.11.1"

@@ -22,6 +22,6 @@ fn main() {
             return
         }
     };
-    let arh = AutoRestHandler::new();
+    let arh = AutoRestHandler::new(ar);
     Server::http("0.0.0.0:1492").unwrap().handle(arh).unwrap();
 }

@@ -5,17 +5,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use autorest::AutoRest;
 use hyper::server::{Handler, Request, Response};
 use hyper::header::ContentLength;
 use std::io::Write;
 use hyper::uri::RequestUri;
 use std::collections::HashMap;
 
-pub struct AutoRestHandler;
+pub struct AutoRestHandler {
+    ar: AutoRest,
+}
 
 impl AutoRestHandler {
-    pub fn new() -> AutoRestHandler {
-        return AutoRestHandler;
+    pub fn new(ar: AutoRest) -> AutoRestHandler {
+        return AutoRestHandler {
+            ar: ar,
+        }
     }
 }
 
