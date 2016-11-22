@@ -5,7 +5,10 @@ authors = ["jeremyletang <letang.jeremy@gmail.com>"]
 
 [dependencies]
 autorest = { path = "../autorest" }
+env_logger = "0.3.4"
 hyper = "0.9.12"
+log = "0.3.6"
 serde = "0.8.18"
 serde_json = "0.8.3"
 serde_derive = "0.8.18"
+time = "0.1.35"
