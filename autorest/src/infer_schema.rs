@@ -25,12 +25,12 @@ fn as_bool(s: String) -> bool {
     }
 }
 
-fn get_column(row: &Row) -> Column {
+fn get_column(row: &Row, ty: Type) -> Column {
     Column {
         name: row.get(1),
         default: row.get(2),
         is_nullable: as_bool(row.get(3)),
-        data_type: Type::Any,
+        data_type: ty,
         character_maximum_length: row.get(5),
         is_updatable: as_bool(row.get(6)),
     }
@@ -44,18 +44,12 @@ pub fn infer_schema(conn: &Connection, database: &str) -> HashMap<String, Table>
             tables.insert(table_name.clone(),
                           Table{name: table_name.clone(), columns: HashMap::new()});
         }
-        tables.get_mut(&table_name).unwrap().columns.insert(row.get(1), get_column(&row));
-    }
-    for (k, v) in &mut tables {
-        let query = format!("SELECT attname, atttypid \
-                             FROM pg_attribute WHERE attrelid = '{}'::regclass", k);
-        for row in &conn.query(&*query, &[]).unwrap() {
-            let column_name: String = row.get(0);
-            if v.columns.get(&column_name).is_some() {
-                v.columns.get_mut(&column_name).unwrap().data_type =
-                    Type::from_oid(row.get(1)).unwrap();
-            }
-        }
+        let column_name: String = row.get(1);
+        let ty_query = format!("SELECT atttypid FROM pg_attribute \
+                                WHERE attrelid = '{}'::regclass and attname = '{}'",
+                               table_name, column_name);
+        let ty = Type::from_oid(conn.query(&*ty_query, &[]).unwrap().get(0).get(0)).unwrap();
+        tables.get_mut(&table_name).unwrap().columns.insert(row.get(1), get_column(&row, ty));
     }
     return tables;
 }

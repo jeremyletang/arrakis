@@ -43,14 +43,15 @@ impl Handler for AutoRestHandler {
 }
 
 
-fn parse_queries(path: &str) -> HashMap<&str, &str> {
+fn parse_queries(path: &str) -> (&str, HashMap<&str, &str>) {
     match path.find('?') {
         Some(pos) => {
-            let (_, end) = path.split_at(pos+1);
+            let (begin, end) = path.split_at(pos+1);
+            let path = &(begin[..begin.len()-1]);
             match end.len() {
-                0 => Default::default(),
+                0 => (path, Default::default()),
                 _ => {
-                    end.split('&').collect::<Vec<&str>>().iter().map(|&s| {
+                    (path, end.split('&').collect::<Vec<&str>>().iter().map(|&s| {
                         match s.find('=') {
                             Some(pos) => {
                                 let (b, e) = s.split_at(pos+1);
@@ -58,10 +59,10 @@ fn parse_queries(path: &str) -> HashMap<&str, &str> {
                             },
                             None => (s, "")
                         }
-                    }).collect::<HashMap<&str, &str>>()
+                    }).collect::<HashMap<&str, &str>>())
                 }
             }
         },
-        None => Default::default()
+        None => (path, Default::default())
     }
 }

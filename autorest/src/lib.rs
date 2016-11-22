@@ -41,6 +41,7 @@ impl AutoRest {
             Err(e) => return Err(format!("{}, {}", e.description(), e.cause().unwrap()))
         };
         let pool = r2d2::Pool::new(config, manager).unwrap();
+        let tables = infer_schema(&*pool.get().unwrap(), &*database);
         Ok(AutoRest {
             conn: pool,
             database: database,
