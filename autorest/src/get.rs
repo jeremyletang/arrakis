@@ -56,9 +56,22 @@ pub fn collect_row_to_json<'stmt>(columns: Vec<String>, table: &Table, rows: Row
     return JsonValue::Array(arr);
 }
 
+fn validate_columns(table: &Table, columns: &Vec<String>) -> Option<Error> {
+    for c in columns {
+        if !table.columns.contains_key(c) {
+            return Some(Error::UnknowColumn(c.to_string(), table.name.clone()));
+        }
+    }
+    return None;
+}
+
 pub fn query(conn: &Connection, table: &Table, queries: &Queries)
              -> Result<JsonValue, Error> {
     let (select_partial, columns) = generate_select(table, queries);
+    // ensure that possible user specified select column exists
+    if let Some(e) = validate_columns(table, &columns) {
+        return Err(e);
+    }
     let from_partial = generate_from(&*table.name);
     let query = format!("{} {}", select_partial, from_partial);
     println!("query is: {}", query);

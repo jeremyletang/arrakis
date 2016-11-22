@@ -14,6 +14,7 @@ pub enum Error {
     InvalidFilter(String),
     InvalidType(String, String, String),
     UnknowModel(String),
+    UnknowColumn(String, String),
     InternalError(String),
 }
 
@@ -24,6 +25,7 @@ impl error::Error for Error {
             Error::InvalidFilter(..) => "invalid or unknown filter",
             Error::InvalidType(..) => "invalid type for column",
             Error::UnknowModel(..) => "unknow model",
+            Error::UnknowColumn(..) => "unknow column",
             Error::InternalError(..) => "internal error",
         }
     }
@@ -43,6 +45,8 @@ impl fmt::Display for Error {
                        col, expected, found)
             },
             Error::UnknowModel(ref s) => write!(fmt, "table '{}' do not exist", s),
+            Error::UnknowColumn(ref c, ref m) =>
+                write!(fmt, "column '{}' do not exist for model {}", c, m),
             Error::InternalError(ref s) => write!(fmt, "internal error, {}", s),
         }
     }

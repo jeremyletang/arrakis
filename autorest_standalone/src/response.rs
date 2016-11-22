@@ -19,6 +19,7 @@ pub fn ar_error_to_status_code(ar_err: ArError) -> StatusCode {
         ArError::InvalidType(..) => StatusCode::BadRequest,
         ArError::NotFound(..) => StatusCode::NotFound,
         ArError::UnknowModel(..) => StatusCode::BadRequest,
+        ArError::UnknowColumn(..) => StatusCode::BadRequest,
         ArError::InternalError(..) => StatusCode::InternalServerError,
     }
 }
