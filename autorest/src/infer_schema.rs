@@ -36,7 +36,7 @@ fn get_column(row: &Row, ty: Type) -> Column {
     }
 }
 
-pub fn infer_schema(conn: &Connection, database: &str) -> HashMap<String, Table> {
+pub fn infer_schema(conn: &Connection) -> HashMap<String, Table> {
     let mut tables: HashMap<String, Table> = HashMap::new();
     for row in &conn.query(&*INFER_SCHEMA_QUERY, &[]).unwrap() {
         let table_name: String = row.get(0);

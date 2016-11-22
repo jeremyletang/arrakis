@@ -33,25 +33,21 @@ pub use postgres::params::{
 
 pub struct AutoRest {
     conn: r2d2::Pool<PostgresConnectionManager>,
-    database: String,
     tables: HashMap<String, Table>,
 }
 
 impl AutoRest {
-    pub fn new<P, S>(params: P, database: S) -> Result<AutoRest, String>
-        where P: IntoConnectParams,
-              S: Into<String> {
-        let database = database.into();
+    pub fn new<P>(params: P) -> Result<AutoRest, String>
+        where P: IntoConnectParams {
         let config = r2d2::Config::default();
         let manager = match PostgresConnectionManager::new(params, TlsMode::None) {
             Ok(m) => m,
             Err(e) => return Err(format!("{}, {}", e.description(), e.cause().unwrap()))
         };
         let pool = r2d2::Pool::new(config, manager).unwrap();
-        let tables = infer_schema(&*pool.get().unwrap(), &*database);
+        let tables = infer_schema(&*pool.get().unwrap());
         Ok(AutoRest {
             conn: pool,
-            database: database,
             tables: tables,
         })
     }

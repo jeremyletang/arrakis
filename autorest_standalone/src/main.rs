@@ -28,7 +28,7 @@ mod metrics;
 
 fn main() {
     let _ = env_logger::init();
-    let ar = AutoRest::new("postgresql://root:root@192.168.99.100:6432/giistr", "giistr").unwrap();
+    let ar = AutoRest::new("postgresql://root:root@192.168.99.100:6432/giistr").unwrap();
     let arh = Metrics::new(AutoRestHandler::new(ar));
     info!("starting autorest server at 0.0.0.0:1492");
     Server::http("0.0.0.0:1492").unwrap().handle(arh).unwrap();
