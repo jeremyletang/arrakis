@@ -9,9 +9,9 @@ use postgres::Connection;
 use postgres::rows::Row;
 use schema::{Table, Column};
 use postgres::types::Type;
-use std::collections::HashMap;
+use std::collections::{HashMap, BTreeMap};
 
-const infer_schema_query: &'static str =
+const INFER_SCHEMA_QUERY: &'static str =
     "select table_name, column_name, column_default, is_nullable, udt_name, \
      character_maximum_length, is_updatable \
      FROM INFORMATION_SCHEMA.COLUMNS \
@@ -38,11 +38,11 @@ fn get_column(row: &Row, ty: Type) -> Column {
 
 pub fn infer_schema(conn: &Connection, database: &str) -> HashMap<String, Table> {
     let mut tables: HashMap<String, Table> = HashMap::new();
-    for row in &conn.query(&*infer_schema_query, &[]).unwrap() {
+    for row in &conn.query(&*INFER_SCHEMA_QUERY, &[]).unwrap() {
         let table_name: String = row.get(0);
         if tables.get(&table_name).is_none() {
             tables.insert(table_name.clone(),
-                          Table{name: table_name.clone(), columns: HashMap::new()});
+                          Table{name: table_name.clone(), columns: BTreeMap::new()});
         }
         let column_name: String = row.get(1);
         let ty_query = format!("SELECT atttypid FROM pg_attribute \

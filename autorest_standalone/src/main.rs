@@ -5,14 +5,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate hyper;
 extern crate autorest;
+extern crate hyper;
+extern crate serde;
+extern crate serde_json;
 
 use handler::AutoRestHandler;
 use hyper::Server;
 use autorest::AutoRest;
 
 mod handler;
+mod response;
 
 fn main() {
     let ar = match AutoRest::new("postgresql://root:root@192.168.99.100:6432/giistr", "giistr") {

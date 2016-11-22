@@ -6,11 +6,14 @@
 // except according to those terms.
 
 use autorest::AutoRest;
+use autorest::queries::Queries;
+use autorest::method::Method as ArMethod;
+use hyper::status::StatusCode;
+use hyper::method::Method;
 use hyper::server::{Handler, Request, Response};
-use hyper::header::ContentLength;
-use std::io::Write;
 use hyper::uri::RequestUri;
-use std::collections::HashMap;
+use std::io::Read;
+use response::{write_ar_response, write_error_response};
 
 pub struct AutoRestHandler {
     ar: AutoRest,
@@ -25,25 +28,35 @@ impl AutoRestHandler {
 }
 
 impl Handler for AutoRestHandler {
-    fn handle(&self, req: Request, mut res: Response) {
+    fn handle(&self, mut req: Request, res: Response) {
+        let body = read_body(&mut req);
         match req.uri {
             RequestUri::AbsolutePath(s) => {
-                let q = parse_queries(&*s);
-                println!("{:?}", q);
+                let (model, queries) = parse_queries(&*s);
+                let model = model.trim_matches('/');
+                match hyper_method_to_autorest_method(&req.method) {
+                    Some(m) => {
+                        let ar_res = match m {
+                            ArMethod::Get => self.ar.get(model, &queries),
+                            ArMethod::Post => self.ar.post(model, &queries, body),
+                            ArMethod::Put => self.ar.put(model, &queries, body),
+                            ArMethod::Patch => self.ar.patch(model, &queries, body),
+                            ArMethod::Delete => self.ar.delete(model, &queries),
+                        };
+                        write_ar_response(res, ar_res);
+                    },
+                    None => {
+                        let estr = format!("method not allowed {}", &req.method);
+                        write_error_response(res, &*estr, StatusCode::MethodNotAllowed);
+                    }
+                };
             },
-            _ => {}
+            _ => write_error_response(res, "unable to parse url", StatusCode::BadRequest)
         };
-
-
-        let body = b"Hello World!";
-        res.headers_mut().set(ContentLength(body.len() as u64));
-        let mut res = res.start().unwrap();
-        res.write_all(body).unwrap();
     }
 }
 
-
-fn parse_queries(path: &str) -> (&str, HashMap<&str, &str>) {
+fn parse_queries(path: &str) -> (&str, Queries) {
     match path.find('?') {
         Some(pos) => {
             let (begin, end) = path.split_at(pos+1);
@@ -59,10 +72,27 @@ fn parse_queries(path: &str) -> (&str, HashMap<&str, &str>) {
                             },
                             None => (s, "")
                         }
-                    }).collect::<HashMap<&str, &str>>())
+                    }).collect::<Queries>())
                 }
             }
         },
         None => (path, Default::default())
     }
+}
+
+fn hyper_method_to_autorest_method(m: &Method) -> Option<ArMethod> {
+    match m {
+        &Method::Get => Some(ArMethod::Get),
+        &Method::Post => Some(ArMethod::Post),
+        &Method::Put => Some(ArMethod::Put),
+        &Method::Patch => Some(ArMethod::Patch),
+        &Method::Delete => Some(ArMethod::Delete),
+        _ => None,
+    }
+}
+
+fn read_body(req: &mut Request) -> String {
+    let mut buf = String::new();
+    let _ = req.read_to_string(&mut buf);
+    return buf;
 }

@@ -12,14 +12,21 @@ extern crate serde;
 extern crate serde_json;
 
 pub mod cvt;
+pub mod error;
+pub mod get;
 pub mod infer_schema;
+pub mod method;
+pub mod queries;
 pub mod schema;
 
+use error::Error;
 use infer_schema::infer_schema;
+use queries::Queries;
 use r2d2_postgres::{TlsMode, PostgresConnectionManager};
 use schema::Table;
+use serde_json::Value;
 use std::collections::HashMap;
-use std::error::Error;
+use std::error::Error as StdError;
 
 pub use postgres::params::{
     ConnectParams, IntoConnectParams, UserInfo, ConnectTarget};
@@ -48,11 +55,32 @@ impl AutoRest {
             tables: tables,
         })
     }
-}
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
+    pub fn get(&self, model: &str, queries: &Queries) -> Result<Value, Error> {
+        if !self.tables.contains_key(model) {
+            return Err(Error::UnknowModel(model.into()));
+        }
+        return get::query(&*(self.conn.get().unwrap()), self.tables.get(model).unwrap(), queries);
     }
+
+    pub fn post(&self, model: &str, queries: &Queries, body: String)
+                -> Result<Value, Error> {
+        return Ok(Value::Bool(true));
+    }
+
+    pub fn put(&self, model: &str, queries: &Queries, body: String)
+               -> Result<Value, Error> {
+        return Ok(Value::Bool(true));
+    }
+
+    pub fn patch(&self, model: &str, queries: &Queries, body: String)
+                 -> Result<Value, Error> {
+        return Ok(Value::Bool(true));
+    }
+
+    pub fn delete(&self, model: &str, queries: &Queries)
+                  -> Result<Value, Error> {
+        return Ok(Value::Bool(true));
+    }
+
 }

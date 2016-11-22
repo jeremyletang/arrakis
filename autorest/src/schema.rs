@@ -5,7 +5,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use postgres::types::Type;
 
 #[derive(Debug)]
@@ -21,5 +21,5 @@ pub struct Column {
 #[derive(Debug)]
 pub struct Table {
     pub name: String,
-    pub columns: HashMap<String, Column>,
+    pub columns: BTreeMap<String, Column>,
 }
