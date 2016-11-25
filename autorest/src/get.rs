@@ -7,15 +7,16 @@
 
 use cvt;
 use error::Error;
-use queries::{QueriesFilter, Queries};
+use queries::{FetchQueries, Queries};
 use postgres::Connection;
 use postgres::rows::Rows;
 use schema::Table;
 use serde_json::Value as JsonValue;
 use serde_json::Map as JsonMap;
 
-pub fn generate_select(table: &Table, queries: &Queries) -> (String, Vec<String>) {
-    let mut partial: String = "SELECT".into();
+pub fn generate_select(mut query: String, table: &Table, queries: &Queries)
+                       -> Result<(String, Vec<String>), Error> {
+    query = "SELECT".into();
     let columns: Vec<String> = match queries.select() {
         Some(columns) => columns.iter().map(|v| v.to_string()).collect(),
         None => table.columns.iter().map(|(k, _)| k.clone()).collect()
@@ -23,18 +24,23 @@ pub fn generate_select(table: &Table, queries: &Queries) -> (String, Vec<String>
     let mut first = true;
     for v in &columns {
         if first {
-            partial += &*format!(" {}", v);
+            query += &*format!(" {}.{}", &*table.name, v);
             first = false;
         } else {
-            partial += &*format!(", {}", v);
+            query += &*format!(", {}.{}", &*table.name, v);
         }
     }
 
-    return (partial, columns);
+    // ensure that possible user specified select column exists
+    if let Some(e) = validate_columns(table, &columns) {
+        return Err(e);
+    }
+
+    return Ok((query, columns));
 }
 
-pub fn generate_from(table_name: &str) -> String {
-    format!("FROM {}", table_name)
+pub fn generate_from(query: String, table_name: &str) -> String {
+    format!("{} FROM {}", query, table_name)
 }
 
 pub fn collect_row_to_json<'stmt>(columns: Vec<String>, table: &Table, rows: Rows<'stmt>)
@@ -65,15 +71,37 @@ fn validate_columns(table: &Table, columns: &Vec<String>) -> Option<Error> {
     return None;
 }
 
+pub fn generate_limit(query: String, queries: &Queries) -> Result<String, Error> {
+    match queries.limit() {
+        Some(limit) => {
+            match limit.trim().parse::<u32>() {
+                Ok(i) => Ok(format!("{} LIMIT {}", query, i)),
+                Err(_) => Err(Error::InvalidFilterType("limit".into(), "u32".into()))
+            }
+        }
+        None => Ok(query)
+    }
+}
+
+pub fn generate_offset(query: String, queries: &Queries) -> Result<String, Error> {
+    match queries.offset() {
+        Some(offset) => {
+            match offset.trim().parse::<u32>() {
+                Ok(i) => Ok(format!("{} OFFSET {}", query, i)),
+                Err(_) => Err(Error::InvalidFilterType("offset".into(), "u32".into()))
+            }
+        }
+        None => Ok(query)
+    }
+}
+
 pub fn query(conn: &Connection, table: &Table, queries: &Queries)
              -> Result<JsonValue, Error> {
-    let (select_partial, columns) = generate_select(table, queries);
-    // ensure that possible user specified select column exists
-    if let Some(e) = validate_columns(table, &columns) {
-        return Err(e);
-    }
-    let from_partial = generate_from(&*table.name);
-    let query = format!("{} {}", select_partial, from_partial);
+    let query = String::new();
+    let (query, columns) = generate_select(query, table, queries)?;
+    let query = generate_from(query, &*table.name);
+    let query = generate_limit(query, queries)?;
+    let query = generate_offset(query, queries)?;
     println!("query is: {}", query);
     match conn.query(&*query, &[]) {
         Ok(rows) => Ok(collect_row_to_json(columns, table, rows)),

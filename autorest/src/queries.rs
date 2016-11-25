@@ -9,11 +9,15 @@ use std::collections::BTreeMap;
 
 pub type Queries<'r> = BTreeMap<&'r str, &'r str>;
 
-pub trait QueriesFilter {
+pub trait FetchQueries {
     fn select(&self) -> Option<Vec<&str>>;
+    fn limit(&self) -> Option<&str>;
+    fn offset(&self) -> Option<&str>;
 }
 
-impl<'r> QueriesFilter for Queries<'r> {
+impl<'r> FetchQueries for Queries<'r> {
+    // this is really naive
+    // do not handle foreign key for now.
     fn select(&self) -> Option<Vec<&str>> {
         match self.get("select") {
             Some(ref val) => {
@@ -21,5 +25,13 @@ impl<'r> QueriesFilter for Queries<'r> {
             },
             None => None
         }
+    }
+
+    fn limit(&self) -> Option<&str> {
+        self.get("limit").map(|val| *val)
+    }
+
+    fn offset(&self) -> Option<&str> {
+        self.get("offset").map(|val| *val)
     }
 }

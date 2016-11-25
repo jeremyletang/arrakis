@@ -12,7 +12,8 @@ use std::fmt;
 pub enum Error {
     NotFound(String),
     InvalidFilter(String),
-    InvalidType(String, String, String),
+    InvalidFilterType(String, String),
+    InvalidColumnType(String, String, String),
     UnknowModel(String),
     UnknowColumn(String, String),
     InternalError(String),
@@ -23,7 +24,8 @@ impl error::Error for Error {
         match *self {
             Error::NotFound(..) => "table not found",
             Error::InvalidFilter(..) => "invalid or unknown filter",
-            Error::InvalidType(..) => "invalid type for column",
+            Error::InvalidFilterType(..) => "invalid type for column",
+            Error::InvalidColumnType(..) => "invalid type for column",
             Error::UnknowModel(..) => "unknow model",
             Error::UnknowColumn(..) => "unknow column",
             Error::InternalError(..) => "internal error",
@@ -38,15 +40,17 @@ impl error::Error for Error {
 impl fmt::Display for Error {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            Error::NotFound(ref s) => write!(fmt, "model not found, {}", s),
+            Error::NotFound(ref s) => write!(fmt, "model not found '{}'", s),
             Error::InvalidFilter(ref s) => write!(fmt, "invalid or unknown filter '{}'", s),
-            Error::InvalidType(ref col, ref expected, ref found) => {
-                write!(fmt, "invalid type for column {}, expected {} found {}",
+            Error::InvalidFilterType(ref col, ref expected) =>
+                write!(fmt, "invalid type for filter '{}, expected '{}'", col, expected),
+            Error::InvalidColumnType(ref col, ref expected, ref found) => {
+                write!(fmt, "invalid type for column '{}', expected '{}' found '{}'",
                        col, expected, found)
             },
             Error::UnknowModel(ref s) => write!(fmt, "table '{}' do not exist", s),
             Error::UnknowColumn(ref c, ref m) =>
-                write!(fmt, "column '{}' do not exist for model {}", c, m),
+                write!(fmt, "column '{}' do not exist for model '{}'", c, m),
             Error::InternalError(ref s) => write!(fmt, "internal error, {}", s),
         }
     }
