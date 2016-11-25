@@ -13,9 +13,11 @@ extern crate serde_json;
 
 pub mod cvt;
 pub mod error;
+pub mod filters;
 pub mod get;
 pub mod infer_schema;
 pub mod method;
+pub mod ordering;
 pub mod queries;
 pub mod schema;
 

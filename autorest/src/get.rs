@@ -8,11 +8,13 @@
 use cvt;
 use error::Error;
 use queries::{FetchQueries, Queries};
+use ordering::{self, Ordering};
 use postgres::Connection;
 use postgres::rows::Rows;
 use schema::Table;
 use serde_json::Value as JsonValue;
 use serde_json::Map as JsonMap;
+use std::str::FromStr;
 
 pub fn generate_select(mut query: String, table: &Table, queries: &Queries)
                        -> Result<(String, Vec<String>), Error> {
@@ -95,11 +97,34 @@ pub fn generate_offset(query: String, queries: &Queries) -> Result<String, Error
     }
 }
 
+pub fn generate_order(mut query: String, table: &Table, queries: &Queries) -> String {
+    match queries.order() {
+        Some(orders) => {
+            if orders.len() > 0 {
+                query = format!("{} {}", query, "ORDER BY");
+            }
+            let mut first = true;
+            for o in orders {
+               query = match first {
+                   true => {
+                       first = !first;
+                       format!("{} {}", query, ordering::to_string(&o, None))
+                   },
+                   false => format!("{} {}", query, ordering::to_string(&o, None))
+               };
+            }
+            return query;
+        },
+        None => query,
+    }
+}
+
 pub fn query(conn: &Connection, table: &Table, queries: &Queries)
              -> Result<JsonValue, Error> {
     let query = String::new();
     let (query, columns) = generate_select(query, table, queries)?;
     let query = generate_from(query, &*table.name);
+    let query = generate_order(query, table, queries);
     let query = generate_limit(query, queries)?;
     let query = generate_offset(query, queries)?;
     println!("query is: {}", query);
