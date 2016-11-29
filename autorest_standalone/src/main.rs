@@ -19,6 +19,7 @@ extern crate serde_json;
 extern crate time as std_time;
 
 use autorest::AutoRest;
+use autorest::config::Config;
 use clap::{App, Arg};
 use handler::AutoRestHandler;
 use hyper::Server;
@@ -34,6 +35,8 @@ struct CmdLineArgs {
     pub addr: String,
     pub pq_addr: String,
     pub disable_metrics: bool,
+    pub include: Option<String>,
+    pub exclude: Option<String>,
 }
 
 fn parse_cmdline() -> CmdLineArgs {
@@ -50,6 +53,14 @@ fn parse_cmdline() -> CmdLineArgs {
              .help("postgres server address")
              .takes_value(true)
              .required(true))
+        .arg(Arg::with_name("include")
+             .long("include")
+             .help("specify which tables should be included from the auto generated api")
+             .takes_value(true))
+        .arg(Arg::with_name("exclude")
+             .long("exclude")
+             .help("specify which tables should be excluded from the auto generated api")
+             .takes_value(true))
         .arg(Arg::with_name("disable-metrics")
              .long("disable-metrics")
              .help("disable metrics logging middleware"))
@@ -59,14 +70,34 @@ fn parse_cmdline() -> CmdLineArgs {
         addr: matches.value_of("addr").unwrap().into(),
         pq_addr: matches.value_of("pq-addr").unwrap().into(),
         disable_metrics: matches.is_present("disable-metrics"),
+        include: matches.value_of("include").map_or(None, |s| Some(s.into())),
+        exclude: matches.value_of("exclude").map_or(None, |s| Some(s.into())),
     }
+}
+
+fn split_list(l: Option<&String>) -> Vec<&str> {
+    l.map_or(vec![], |ref s| s.split(",").collect::<Vec<&str>>()).iter()
+        .filter_map(|s| if s.is_empty() { None } else { Some(*s) }).collect()
 }
 
 fn main() {
     let _ = env_logger::init();
     let args = parse_cmdline();
+
+    let config = Config::builder()
+        .timeout(1)
+        .excluded(split_list(args.exclude.as_ref()))
+        .included(split_list(args.include.as_ref()))
+        .build();
+
+    let auto = match AutoRest::with_config(&*args.pq_addr, config) {
+        Ok(auto) => auto,
+        Err(e) => { println!("error: {}", e); return; },
+    };
+
+    info!("this instance will manage the following tables: {}",
+          auto.get_tables().iter().map(|(t, _)| &**t).collect::<Vec<&str>>().join(", "));
     info!("starting autorest server at {}", &*args.addr);
-    let auto = AutoRest::new(&*args.pq_addr).unwrap();
     let handler = AutoRestHandler::new(auto);
     if !args.disable_metrics {
         let handler = Metrics::new(handler);

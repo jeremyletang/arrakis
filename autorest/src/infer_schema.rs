@@ -36,7 +36,35 @@ fn get_column(row: &Row, ty: Type) -> Column {
     }
 }
 
-pub fn infer_schema(conn: &Connection) -> HashMap<String, Table> {
+pub fn epur_tables(mut tables: HashMap<String, Table>, included: &[&str], excluded: &[&str])
+                   -> Result<HashMap<String, Table>, String> {
+    if !included.is_empty() {
+        let mut _tables = HashMap::new();
+        for t in included {
+            let key: String = t.to_string();
+            if tables.contains_key(&key) {
+                _tables.insert(key.clone(), tables.remove(&key).unwrap());
+            } else {
+                return Err(format!("table to include {} do not exist", t));
+            }
+        }
+        Ok(_tables)
+    } else {
+        let mut _tables = tables.clone();
+        for t in excluded {
+            let key = t.to_string();
+            if _tables.contains_key(&key) {
+                _tables.remove(&key);
+            } else {
+                return Err(format!("table to exclude {} do not exist", t));
+            }
+        }
+        Ok(_tables)
+    }
+}
+
+pub fn infer_schema(conn: &Connection, included: &[&str], excluded: &[&str])
+                    -> Result<HashMap<String, Table>, String> {
     let mut tables: HashMap<String, Table> = HashMap::new();
     for row in &conn.query(&*INFER_SCHEMA_QUERY, &[]).unwrap() {
         let table_name: String = row.get(0);
@@ -51,5 +79,6 @@ pub fn infer_schema(conn: &Connection) -> HashMap<String, Table> {
         let ty = Type::from_oid(conn.query(&*ty_query, &[]).unwrap().get(0).get(0)).unwrap();
         tables.get_mut(&table_name).unwrap().columns.insert(row.get(1), get_column(&row, ty));
     }
-    return tables;
+
+    return epur_tables(tables, included, excluded);
 }

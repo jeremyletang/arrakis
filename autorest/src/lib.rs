@@ -11,6 +11,7 @@ extern crate r2d2_postgres;
 extern crate serde;
 extern crate serde_json;
 
+pub mod config;
 pub mod cvt;
 pub mod error;
 pub mod filters;
@@ -21,6 +22,7 @@ pub mod ordering;
 pub mod queries;
 pub mod schema;
 
+use config::Config;
 use error::Error;
 use infer_schema::infer_schema;
 use queries::Queries;
@@ -29,6 +31,7 @@ use schema::Table;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::error::Error as StdError;
+use std::time::Duration;
 
 pub use postgres::params::{
     ConnectParams, IntoConnectParams, UserInfo, ConnectTarget};
@@ -41,17 +44,44 @@ pub struct AutoRest {
 impl AutoRest {
     pub fn new<P>(params: P) -> Result<AutoRest, String>
         where P: IntoConnectParams {
-        let config = r2d2::Config::default();
+        return AutoRest::with_config(params, Config::default());
+    }
+
+    pub fn with_config<P>(params: P, config: Config) -> Result<AutoRest, String>
+        where P: IntoConnectParams {
+        // be sure the config is not invalid
+        if config.excluded().len() != 0 && config.included().len() != 0 {
+            return Err(format!("cannot specify both excluded and included schemas"));
+        }
+
+        // build conf with specific timeout
+        let r2d2_config = r2d2::Config::builder()
+            .initialization_fail_fast(true)
+            .connection_timeout(Duration::from_secs(config.timeout()))
+            .error_handler(Box::new(r2d2::NopErrorHandler))
+            .build();
+
+        // build our postgres manager
         let manager = match PostgresConnectionManager::new(params, TlsMode::None) {
             Ok(m) => m,
             Err(e) => return Err(format!("{}, {}", e.description(), e.cause().unwrap()))
         };
-        let pool = r2d2::Pool::new(config, manager).unwrap();
-        let tables = infer_schema(&*pool.get().unwrap());
+
+        // build the pool
+        let pool = match r2d2::Pool::new(r2d2_config, manager) {
+            Ok(pool) => pool,
+            Err(e) => return Err(format!("{}", e))
+        };
+
+        let tables = infer_schema(&*pool.get().unwrap(), config.included(), config.excluded());
         Ok(AutoRest {
             conn: pool,
-            tables: tables,
+            tables: tables?,
         })
+    }
+
+    pub fn get_tables(&self) -> &HashMap<String, Table> {
+        return &self.tables;
     }
 
     pub fn get(&self, model: &str, queries: &Queries) -> Result<Value, Error> {

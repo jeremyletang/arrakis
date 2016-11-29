@@ -8,7 +8,7 @@
 use std::collections::BTreeMap;
 use postgres::types::Type;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Column {
     pub name: String,
     pub default: Option<String>,
@@ -18,7 +18,7 @@ pub struct Column {
     pub is_updatable: bool,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Table {
     pub name: String,
     pub columns: BTreeMap<String, Column>,
