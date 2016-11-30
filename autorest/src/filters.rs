@@ -39,7 +39,7 @@ pub enum Filter {
     NotIn(String, Vec<String>),
     Is(String, Is),
     IsNot(String, Is),
-    Not(String, Box<Filter>),
+    Not(Box<Filter>),
 }
 
 const INVALID_SYNTAX_ERROR: &'static str =
@@ -68,6 +68,24 @@ impl Filter {
             "lte" => Ok(Filter::LesserThanEqual(name.to_string(), value.to_string())),
             "lt" => Ok(Filter::LesserThan(name.to_string(), value.to_string())),
             "ne" => Ok(Filter::NotEqual(name.to_string(), value.to_string())),
+            "in" => {
+                Ok(Filter::In(
+                    name.to_string(),
+                    value.split(',').map(|s| s.into()).collect::<Vec<String>>())
+                )
+            },
+            "notin" => {
+                Ok(Filter::NotIn(
+                    name.to_string(),
+                    value.split(',').map(|s| s.into()).collect::<Vec<String>>())
+                )
+            },
+            "not" => {
+                match Filter::new(name, value) {
+                    Ok(f) => Ok(Filter::Not(Box::new(f))),
+                    Err(e) => Err(e),
+                }
+            }
             _ => Err(Error::InvalidFilter(filter.into())),
         }
     }
@@ -80,9 +98,32 @@ impl Filter {
             &Filter::LesserThanEqual(ref n, ref v) => fmt_basic_filter("<=", n , v, table),
             &Filter::LesserThan(ref n, ref v) => fmt_basic_filter("<", n , v, table),
             &Filter::NotEqual(ref n, ref v) => fmt_basic_filter("!=", n , v, table),
+            &Filter::In(ref n, ref v) => fmt_in_filter(n, v, table),
+            &Filter::NotIn(ref n, ref v) => fmt_notin_filter(n, v, table),
+            &Filter::Not(ref f) => fmt_not_filter(f, table),
             _ => String::new(),
         }
     }
+}
+
+fn fmt_in_filter(name: &str, val: &Vec<String>, table: Option<&str>) -> String {
+    let l = val.iter().map(|s| format!("'{}'", s)).collect::<Vec<String>>().join(", ");
+    match table {
+        Some(t) => format!("{}.{} IN ({})", t, name, l),
+        None => format!("{} IN ({})", name, l),
+    }
+}
+
+fn fmt_notin_filter(name: &str, val: &Vec<String>, table: Option<&str>) -> String {
+    let l = val.iter().map(|s| format!("'{}'", s)).collect::<Vec<String>>().join(", ");
+    match table {
+        Some(t) => format!("{}.{} NOT IN ({})", t, name, l),
+        None => format!("{} NOT IN ({})", name, l),
+    }
+}
+
+fn fmt_not_filter(f: &Filter, table: Option<&str>) -> String {
+    format!("NOT ({})", f.to_string(table))
 }
 
 fn fmt_basic_filter(filter: &str, col: &str, val: &str, table: Option<&str>) -> String {
