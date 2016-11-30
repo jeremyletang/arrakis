@@ -12,6 +12,7 @@ use std::fmt;
 pub enum Error {
     NotFound(String),
     InvalidFilter(String),
+    InvalidFilterSyntax(String),
     InvalidFilterType(String, String),
     InvalidColumnType(String, String, String),
     UnknowModel(String),
@@ -24,6 +25,7 @@ impl error::Error for Error {
         match *self {
             Error::NotFound(..) => "table not found",
             Error::InvalidFilter(..) => "invalid or unknown filter",
+            Error::InvalidFilterSyntax(..) => "invalid filter syntax",
             Error::InvalidFilterType(..) => "invalid type for column",
             Error::InvalidColumnType(..) => "invalid type for column",
             Error::UnknowModel(..) => "unknow model",
@@ -42,6 +44,7 @@ impl fmt::Display for Error {
         match *self {
             Error::NotFound(ref s) => write!(fmt, "model not found '{}'", s),
             Error::InvalidFilter(ref s) => write!(fmt, "invalid or unknown filter '{}'", s),
+            Error::InvalidFilterSyntax(ref s) => write!(fmt, "{}", s),
             Error::InvalidFilterType(ref col, ref expected) =>
                 write!(fmt, "invalid type for filter '{}, expected '{}'", col, expected),
             Error::InvalidColumnType(ref col, ref expected, ref found) => {

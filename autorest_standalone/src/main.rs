@@ -17,14 +17,17 @@ extern crate log;
 extern crate serde;
 extern crate serde_json;
 extern crate time as std_time;
+extern crate unicase;
 
 use autorest::AutoRest;
 use autorest::config::Config;
+use cors::Cors;
 use clap::{App, Arg};
 use handler::AutoRestHandler;
 use hyper::Server;
 use metrics::Metrics;
 
+mod cors;
 mod handler;
 mod response;
 mod metrics;
@@ -99,6 +102,7 @@ fn main() {
           auto.get_tables().iter().map(|(t, _)| &**t).collect::<Vec<&str>>().join(", "));
     info!("starting autorest server at {}", &*args.addr);
     let handler = AutoRestHandler::new(auto);
+    let handler = Cors::new(handler);
     if !args.disable_metrics {
         let handler = Metrics::new(handler);
         Server::http(&*args.addr).unwrap().handle(handler).unwrap();

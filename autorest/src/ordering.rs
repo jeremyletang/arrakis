@@ -32,7 +32,7 @@ impl FromStr for Ordering {
 }
 
 pub fn to_string(o: &Ordering, prefix: Option<&str>) -> String {
-    let mut s = match o {
+    let s = match o {
         &Ordering::Asc(ref s) => format!("{} {}", s, "ASC"),
         &Ordering::Desc(ref s) => format!("{} {}", s, "DESC"),
     };

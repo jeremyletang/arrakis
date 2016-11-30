@@ -9,6 +9,7 @@ use filters::Filter;
 use ordering::Ordering;
 use std::collections::BTreeMap;
 use std::str::FromStr;
+use error::Error;
 
 pub const SELECT: &'static str = "select";
 pub const LIMIT: &'static str = "limit";
@@ -23,7 +24,7 @@ pub trait FetchQueries {
     fn offset(&self) -> Option<&str>;
     fn order(&self) -> Option<Vec<Ordering>>;
     // map of column -> filter
-    fn filters(&self) -> Option<BTreeMap<&str, Filter>>;
+    fn filters(&self) -> Result<BTreeMap<&str, Filter>, Error>;
 }
 
 
@@ -59,7 +60,19 @@ impl<'r> FetchQueries for Queries<'r> {
         }
     }
 
-    fn filters(&self) -> Option<BTreeMap<&str, Filter>> {
-        None
+    fn filters(&self) -> Result<BTreeMap<&str, Filter>, Error> {
+        let mut filters = BTreeMap::new();
+        for (k, v) in self.iter() {
+            match *k {
+                SELECT | LIMIT | OFFSET | ORDER => {},
+                _ => {
+                    match Filter::new(k, v) {
+                        Ok(f) => { filters.insert(*k, f); },
+                        Err(e) => return Err(e)
+                    }
+                }
+            }
+        }
+        return Ok(filters);
     }
 }

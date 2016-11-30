@@ -5,8 +5,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::time::Duration;
-
 const DEFAULT_CONNECTION_TIMEOUT: u64 = 5;
 
 #[derive(Debug, Clone)]

@@ -7,8 +7,6 @@
 
 use autorest::error::Error as ArError;
 use hyper::header::ContentLength;
-use hyper::header::ContentType;
-use hyper::mime::{Mime, TopLevel, SubLevel};
 use hyper::status::StatusCode;
 use hyper::server::Response as HttpResponse;
 use serde_json::Value as JsonValue;
@@ -19,6 +17,7 @@ pub fn ar_error_to_status_code(ar_err: ArError) -> StatusCode {
     match ar_err {
         ArError::InvalidFilter(..) => StatusCode::BadRequest,
         ArError::InvalidFilterType(..) => StatusCode::BadRequest,
+        ArError::InvalidFilterSyntax(..) => StatusCode::BadRequest,
         ArError::InvalidColumnType(..) => StatusCode::BadRequest,
         ArError::NotFound(..) => StatusCode::NotFound,
         ArError::UnknowModel(..) => StatusCode::BadRequest,
@@ -60,7 +59,6 @@ pub fn write_error_response(res: HttpResponse, estr: &str, code: StatusCode) {
 
 fn write_response(mut res: HttpResponse, body: &[u8], code: StatusCode) {
     res.headers_mut().set(ContentLength(body.len() as u64));
-    res.headers_mut().set(ContentType(Mime(TopLevel::Application, SubLevel::Json, vec![])));
     *res.status_mut() = code;
     let mut res = res.start().unwrap();
     res.write_all(body).unwrap();

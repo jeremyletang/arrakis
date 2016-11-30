@@ -8,30 +8,25 @@
 use cvt;
 use error::Error;
 use queries::{FetchQueries, Queries};
-use ordering::{self, Ordering};
+use ordering;
 use postgres::Connection;
 use postgres::rows::Rows;
 use schema::Table;
 use serde_json::Value as JsonValue;
 use serde_json::Map as JsonMap;
-use std::str::FromStr;
 
 pub fn generate_select(mut query: String, table: &Table, queries: &Queries)
                        -> Result<(String, Vec<String>), Error> {
-    query = "SELECT".into();
+    query += "SELECT ".into();
     let columns: Vec<String> = match queries.select() {
         Some(columns) => columns.iter().map(|v| v.to_string()).collect(),
         None => table.columns.iter().map(|(k, _)| k.clone()).collect()
     };
-    let mut first = true;
-    for v in &columns {
-        if first {
-            query += &*format!(" {}.{}", &*table.name, v);
-            first = false;
-        } else {
-            query += &*format!(", {}.{}", &*table.name, v);
-        }
-    }
+
+    query += &*columns.iter()
+        .map(|ref s| format!("{}.{}", &*table.name, s))
+        .collect::<Vec<String>>()
+        .join(", ");
 
     // ensure that possible user specified select column exists
     if let Some(e) = validate_columns(table, &columns) {
@@ -43,6 +38,26 @@ pub fn generate_select(mut query: String, table: &Table, queries: &Queries)
 
 pub fn generate_from(query: String, table_name: &str) -> String {
     format!("{} FROM {}", query, table_name)
+}
+
+pub fn generate_where(mut query: String, table: &Table, queries: &Queries)
+                      -> Result<String, Error> {
+    let filters = queries.filters()?;
+    if !filters.is_empty() {
+        query = format!("{} WHERE ", query);
+    }
+    let mut filters_str = vec![];
+    for (col, filter) in filters {
+        if !table.columns.contains_key(col) {
+            let estr = format!("column {} do not exist for table {}", col, table.name);
+            return Err(Error::InvalidFilterSyntax(estr));
+        }
+        filters_str.push(filter.to_string(Some(&table.name)));
+    }
+    query += &*filters_str.iter().map(|s| &**s)
+        .collect::<Vec<&str>>()
+        .join("AND ");
+    Ok(query)
 }
 
 pub fn collect_row_to_json<'stmt>(columns: Vec<String>, table: &Table, rows: Rows<'stmt>)
@@ -100,19 +115,11 @@ pub fn generate_offset(query: String, queries: &Queries) -> Result<String, Error
 pub fn generate_order(mut query: String, table: &Table, queries: &Queries) -> String {
     match queries.order() {
         Some(orders) => {
-            if orders.len() > 0 {
-                query = format!("{} {}", query, "ORDER BY");
-            }
-            let mut first = true;
-            for o in orders {
-               query = match first {
-                   true => {
-                       first = !first;
-                       format!("{} {}", query, ordering::to_string(&o, None))
-                   },
-                   false => format!("{} {}", query, ordering::to_string(&o, None))
-               };
-            }
+            if orders.len() > 0 { query = format!("{} {}", query, "ORDER BY "); }
+            query += &*orders.iter()
+                .map(|ref o| format!("{}", ordering::to_string(&o, Some(&*table.name))))
+                .collect::<Vec<String>>()
+                .join(", ");
             return query;
         },
         None => query,
@@ -124,10 +131,11 @@ pub fn query(conn: &Connection, table: &Table, queries: &Queries)
     let query = String::new();
     let (query, columns) = generate_select(query, table, queries)?;
     let query = generate_from(query, &*table.name);
+    let query = generate_where(query, table, queries)?;
     let query = generate_order(query, table, queries);
     let query = generate_limit(query, queries)?;
     let query = generate_offset(query, queries)?;
-    println!("query is: {}", query);
+    debug!("query is: {}", query);
     match conn.query(&*query, &[]) {
         Ok(rows) => Ok(collect_row_to_json(columns, table, rows)),
         Err(e) => Err(Error::InternalError("internal database error".into()))

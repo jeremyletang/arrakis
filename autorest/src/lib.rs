@@ -5,6 +5,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(unused_variables)]
+
+extern crate env_logger;
+#[macro_use]
+extern crate log;
 extern crate postgres;
 extern crate r2d2;
 extern crate r2d2_postgres;
