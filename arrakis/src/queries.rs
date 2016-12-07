@@ -7,7 +7,7 @@
 
 use filters::Filter;
 use ordering::Ordering;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use std::str::FromStr;
 use error::Error;
 
@@ -27,6 +27,9 @@ pub trait FetchQueries {
     fn filters(&self) -> Result<BTreeMap<&str, Filter>, Error>;
 }
 
+pub fn queries_from_hashmap<'r>(m: &'r HashMap<String, Vec<String>>) -> Queries<'r> {
+    m.iter().map(|(k, v)| (&**k, &*(v[0]))).collect::<Queries<'r>>()
+}
 
 impl<'r> FetchQueries for Queries<'r> {
     // this is really naive

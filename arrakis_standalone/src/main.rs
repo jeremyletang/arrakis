@@ -8,7 +8,7 @@
 #![feature(plugin)]
 #![plugin(log)]
 
-extern crate autorest;
+extern crate arrakis;
 extern crate clap;
 extern crate env_logger;
 extern crate hyper;
@@ -19,11 +19,11 @@ extern crate serde_json;
 extern crate time as std_time;
 extern crate unicase;
 
-use autorest::AutoRest;
-use autorest::config::Config;
+use arrakis::Arrakis;
+use arrakis::config::Config;
 use cors::Cors;
 use clap::{App, Arg};
-use handler::AutoRestHandler;
+use handler::ArrakisHandler;
 use hyper::Server;
 use metrics::Metrics;
 
@@ -93,7 +93,7 @@ fn main() {
         .included(split_list(args.include.as_ref()))
         .build();
 
-    let auto = match AutoRest::with_config(&*args.pq_addr, config) {
+    let auto = match Arrakis::with_config(&*args.pq_addr, config) {
         Ok(auto) => auto,
         Err(e) => { println!("error: {}", e); return; },
     };
@@ -101,7 +101,7 @@ fn main() {
     info!("this instance will manage the following tables: {}",
           auto.get_tables().iter().map(|(t, _)| &**t).collect::<Vec<&str>>().join(", "));
     info!("starting autorest server at {}", &*args.addr);
-    let handler = AutoRestHandler::new(auto);
+    let handler = ArrakisHandler::new(auto);
     let handler = Cors::new(handler);
     if !args.disable_metrics {
         let handler = Metrics::new(handler);

@@ -1,7 +1,7 @@
 [workspace]
 members = [
-  "autorest",
-  "autorest_iron",
-  "autorest_nickel",
-  "autorest_standalone",
+  "arrakis",
+  "arrakis_iron",
+  "arrakis_nickel",
+  "arrakis_standalone",
 ]

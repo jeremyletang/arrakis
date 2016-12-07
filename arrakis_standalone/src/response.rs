@@ -5,7 +5,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use autorest::error::Error as ArError;
+use arrakis::error::Error as ArError;
 use hyper::header::ContentLength;
 use hyper::status::StatusCode;
 use hyper::server::Response as HttpResponse;

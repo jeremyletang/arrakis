@@ -41,18 +41,18 @@ use std::time::Duration;
 pub use postgres::params::{
     ConnectParams, IntoConnectParams, UserInfo, ConnectTarget};
 
-pub struct AutoRest {
+pub struct Arrakis {
     conn: r2d2::Pool<PostgresConnectionManager>,
     tables: HashMap<String, Table>,
 }
 
-impl AutoRest {
-    pub fn new<P>(params: P) -> Result<AutoRest, String>
+impl Arrakis {
+    pub fn new<P>(params: P) -> Result<Arrakis, String>
         where P: IntoConnectParams {
-        return AutoRest::with_config(params, Config::default());
+        return Arrakis::with_config(params, Config::default());
     }
 
-    pub fn with_config<P>(params: P, config: Config) -> Result<AutoRest, String>
+    pub fn with_config<P>(params: P, config: Config) -> Result<Arrakis, String>
         where P: IntoConnectParams {
         // be sure the config is not invalid
         if config.excluded().len() != 0 && config.included().len() != 0 {
@@ -79,7 +79,7 @@ impl AutoRest {
         };
 
         let tables = infer_schema(&*pool.get().unwrap(), config.included(), config.excluded());
-        Ok(AutoRest {
+        Ok(Arrakis {
             conn: pool,
             tables: tables?,
         })

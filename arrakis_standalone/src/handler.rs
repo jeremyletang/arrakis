@@ -5,9 +5,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use autorest::AutoRest;
-use autorest::queries::Queries;
-use autorest::method::Method as ArMethod;
+use arrakis::Arrakis;
+use arrakis::queries::Queries;
+use arrakis::method::Method as ArMethod;
 use hyper::status::StatusCode;
 use hyper::method::Method;
 use hyper::server::{Handler, Request, Response};
@@ -15,19 +15,19 @@ use hyper::uri::RequestUri;
 use std::io::Read;
 use response::{write_ar_response, write_error_response};
 
-pub struct AutoRestHandler {
-    ar: AutoRest,
+pub struct ArrakisHandler {
+    ar: Arrakis,
 }
 
-impl AutoRestHandler {
-    pub fn new(ar: AutoRest) -> AutoRestHandler {
-        return AutoRestHandler {
+impl ArrakisHandler {
+    pub fn new(ar: Arrakis) -> ArrakisHandler {
+        return ArrakisHandler {
             ar: ar,
         }
     }
 }
 
-impl Handler for AutoRestHandler {
+impl Handler for ArrakisHandler {
     fn handle(&self, mut req: Request, res: Response) {
         let body = read_body(&mut req);
         match req.uri {

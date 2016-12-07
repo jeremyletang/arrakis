@@ -1,5 +1,5 @@
 [package]
-name = "autorest_nickel"
+name = "arrakis_nickel"
 version = "0.1.0"
 authors = ["jeremyletang <letang.jeremy@gmail.com>"]
 

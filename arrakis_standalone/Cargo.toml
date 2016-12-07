@@ -1,10 +1,10 @@
 [package]
-name = "autorest_standalone"
+name = "arrakis_standalone"
 version = "0.1.0"
 authors = ["jeremyletang <letang.jeremy@gmail.com>"]
 
 [dependencies]
-autorest = { path = "../autorest" }
+arrakis = { path = "../arrakis" }
 clap = "2.19.0"
 env_logger = "0.3.4"
 hyper = "0.9.12"
