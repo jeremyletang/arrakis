@@ -40,14 +40,17 @@ pub fn make_error_response(estr: &str) -> Vec<u8> {
     ::serde_json::ser::to_vec(&value).unwrap()
 }
 
-pub fn make_ar_response(ar_res: Result<JsonValue, ArError>) -> (Vec<u8>, StatusCode) {
+pub fn make_ar_response(ar_res: Result<Option<JsonValue>, ArError>) -> (Vec<u8>, StatusCode) {
     match ar_res {
-        Ok(jv) => (make_success_response(jv), StatusCode::Ok),
+        Ok(jv) => match jv {
+            Some(v) => (make_success_response(v), StatusCode::Ok),
+            None => (vec![], StatusCode::NoContent),
+        },
         Err(e) => (make_error_response(&*format!("{}", e)), ar_error_to_status_code(e))
     }
 }
 
-pub fn write_ar_response(res: HttpResponse, ar_res: Result<JsonValue, ArError>) {
+pub fn write_ar_response(res: HttpResponse, ar_res: Result<Option<JsonValue>, ArError>) {
     let (body, code) = make_ar_response(ar_res);
     write_response(res, &*body, code);
 }

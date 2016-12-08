@@ -43,7 +43,7 @@ struct CmdLineArgs {
 }
 
 fn parse_cmdline() -> CmdLineArgs {
-    let matches = App::new("autorest_standalone")
+    let matches = App::new("arrakis_standalone")
         .version("v0.1.0")
         .global_setting(clap::AppSettings::ColoredHelp)
         .about("automatic generation of your rest api from your database schema")

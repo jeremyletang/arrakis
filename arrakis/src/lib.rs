@@ -17,7 +17,9 @@ extern crate serde;
 extern crate serde_json;
 
 pub mod config;
+pub mod common;
 pub mod cvt;
+pub mod delete;
 pub mod error;
 pub mod filters;
 pub mod get;
@@ -89,31 +91,43 @@ impl Arrakis {
         return &self.tables;
     }
 
-    pub fn get(&self, model: &str, queries: &Queries) -> Result<Value, Error> {
-        if !self.tables.contains_key(model) {
-            return Err(Error::UnknowModel(model.into()));
-        }
+    pub fn get(&self, model: &str, queries: &Queries) -> Result<Option<Value>, Error> {
+        self.model_exists(model)?;
         return get::query(&*(self.conn.get().unwrap()), self.tables.get(model).unwrap(), queries);
     }
 
     pub fn post(&self, model: &str, queries: &Queries, body: String)
-                -> Result<Value, Error> {
-        return Ok(Value::Bool(true));
+                -> Result<Option<Value>, Error> {
+        self.model_exists(model)?;
+        return Ok(Some(Value::Bool(true)));
     }
 
     pub fn put(&self, model: &str, queries: &Queries, body: String)
-               -> Result<Value, Error> {
-        return Ok(Value::Bool(true));
+               -> Result<Option<Value>, Error> {
+        self.model_exists(model)?;
+        return Ok(Some(Value::Bool(true)));
     }
 
     pub fn patch(&self, model: &str, queries: &Queries, body: String)
-                 -> Result<Value, Error> {
-        return Ok(Value::Bool(true));
+                 -> Result<Option<Value>, Error> {
+        self.model_exists(model)?;
+        return Ok(Some(Value::Bool(true)));
     }
 
     pub fn delete(&self, model: &str, queries: &Queries)
-                  -> Result<Value, Error> {
-        return Ok(Value::Bool(true));
+                  -> Result<Option<Value>, Error> {
+        self.model_exists(model)?;
+        match delete::query(&*(self.conn.get().unwrap()),
+                            self.tables.get(model).unwrap(), queries) {
+            Ok(_) => Ok(None),
+            Err(e) => Err(e),
+        }
     }
 
+    fn model_exists(&self, model: &str) -> Result<(), Error> {
+        if !self.tables.contains_key(model) {
+            return Err(Error::UnknowModel(model.into()));
+        }
+        return Ok(());
+    }
 }

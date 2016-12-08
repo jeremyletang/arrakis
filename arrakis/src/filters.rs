@@ -5,23 +5,40 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::str::FromStr;
 use error::Error;
+use std::str::FromStr;
+use std::string::ToString;
 
-pub enum Is {
+pub enum IsKind {
     Null,
     True,
     False,
 }
 
-impl FromStr for Is {
+const NULL: &'static str = "NULL";
+const TRUE: &'static str = "TRUE";
+const FALSE: &'static str = "FALSE";
+
+impl FromStr for IsKind {
     type Err = ();
     fn from_str(s: &str) -> Result<Self, Self::Err> {
+        use self::IsKind::*;
         match &*s.to_uppercase() {
-            "NULL" => Ok(Is::Null),
-            "TRUE" => Ok(Is::True),
-            "FALSE" => Ok(Is::False),
+            NULL => Ok(Null),
+            TRUE => Ok(True),
+            FALSE => Ok(False),
             _ => Err(()),
+        }
+    }
+}
+
+impl ToString for IsKind {
+    fn to_string(&self) -> String {
+        use self::IsKind::*;
+        match *self {
+            Null => NULL.into(),
+            True => TRUE.into(),
+            False => FALSE.into(),
         }
     }
 }
@@ -37,8 +54,8 @@ pub enum Filter {
     ILike(String, String),
     In(String, Vec<String>),
     NotIn(String, Vec<String>),
-    Is(String, Is),
-    IsNot(String, Is),
+    Is(String, IsKind),
+    IsNot(String, IsKind),
     Not(Box<Filter>),
 }
 
@@ -74,6 +91,8 @@ const INVALID_SYNTAX_ERROR: &'static str =
     "invalid filter syntax, should be a filter and a value at least, separated by a dot";
 const EMPTY_VALUE_ERROR: &'static str =
     "invalid filter, value of a filter cannot be empty";
+const UNALLOWED_IS_FILTER_VALUE: &'static str =
+    "invalid filter is / is not, allowed value are true, false, null.";
 
 impl Filter {
     pub fn new(name: &str, value: &str) -> Result<Filter, Error> {
@@ -107,6 +126,14 @@ impl Filter {
                 name.to_string(),
                 value.split(',').map(|s| s.into()).collect::<Vec<String>>())
             ),
+            IS => match IsKind::from_str(value) {
+                Ok(k) => Ok(Is(name.to_string(), k)),
+                Err(e) => Err(Error::InvalidFilterSyntax(UNALLOWED_IS_FILTER_VALUE.to_string())),
+            },
+            IS_NOT => match IsKind::from_str(value) {
+                Ok(k) => Ok(IsNot(name.to_string(), k)),
+                Err(e) => Err(Error::InvalidFilterSyntax(UNALLOWED_IS_FILTER_VALUE.to_string())),
+            },
             NOT => match Filter::new(name, value) {
                 Ok(f) => Ok(Not(Box::new(f))),
                 Err(e) => Err(e),
@@ -126,11 +153,19 @@ impl Filter {
             &NotEqual(ref n, ref v) => fmt_basic_filter(NE_SYM, n , v, table),
             &Like(ref n, ref patt) => fmt_like_filter(LIKE_SYM, n, patt, table),
             &ILike(ref n, ref patt) => fmt_like_filter(ILIKE_SYM, n, patt, table),
-            &In(ref n, ref v) => fmt_in_filter(n, v, table),
-            &NotIn(ref n, ref v) => fmt_notin_filter(n, v, table),
+            &In(ref n, ref v) => fmt_in_filter(IN_SYM, n, v, table),
+            &NotIn(ref n, ref v) => fmt_in_filter(NOT_IN_SYM, n, v, table),
+            &Is(ref n, ref k) => fmt_is_filter(IS_SYM, n, k, table),
+            &IsNot(ref n, ref k) => fmt_is_filter(IS_NOT_SYM, n, k, table),
             &Not(ref f) => fmt_not_filter(f, table),
-            _ => String::new(),
         }
+    }
+}
+
+fn fmt_is_filter(f: &str, name: &str, k: &IsKind, table: Option<&str>) -> String {
+    match table {
+        Some(t) => format!("{}.{} {} {}", t, name, f, k.to_string()),
+        None => format!("{} {} {}", name, f, k.to_string()),
     }
 }
 
@@ -141,19 +176,11 @@ fn fmt_like_filter(f: &str, name: &str, patt: &str, table: Option<&str>) -> Stri
     }
 }
 
-fn fmt_in_filter(name: &str, val: &Vec<String>, table: Option<&str>) -> String {
+fn fmt_in_filter(f: &str, name: &str, val: &Vec<String>, table: Option<&str>) -> String {
     let l = val.iter().map(|s| format!("'{}'", s)).collect::<Vec<String>>().join(", ");
     match table {
-        Some(t) => format!("{}.{} {} ({})", t, name, IN_SYM, l),
-        None => format!("{} {} ({})", name, IN_SYM, l),
-    }
-}
-
-fn fmt_notin_filter(name: &str, val: &Vec<String>, table: Option<&str>) -> String {
-    let l = val.iter().map(|s| format!("'{}'", s)).collect::<Vec<String>>().join(", ");
-    match table {
-        Some(t) => format!("{}.{} {} ({})", t, name, NOT_IN_SYM, l),
-        None => format!("{} {} ({})", name, NOT_IN_SYM, l),
+        Some(t) => format!("{}.{} {} ({})", t, name, f, l),
+        None => format!("{} {} ({})", name, f, l),
     }
 }
 

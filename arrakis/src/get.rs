@@ -5,6 +5,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use common;
 use cvt;
 use error::Error;
 use queries::{FetchQueries, Queries};
@@ -34,58 +35,6 @@ pub fn generate_select(mut query: String, table: &Table, queries: &Queries)
     }
 
     return Ok((query, columns));
-}
-
-pub fn generate_from(query: String, table_name: &str) -> String {
-    format!("{} FROM {}", query, table_name)
-}
-
-pub fn generate_where(mut query: String, table: &Table, queries: &Queries)
-                      -> Result<String, Error> {
-    let filters = queries.filters()?;
-    if !filters.is_empty() {
-        query = format!("{} WHERE ", query);
-    }
-    let mut filters_str = vec![];
-    for (col, filter) in filters {
-        if !table.columns.contains_key(col) {
-            let estr = format!("column {} do not exist for table {}", col, table.name);
-            return Err(Error::InvalidFilterSyntax(estr));
-        }
-        filters_str.push(filter.to_string(Some(&table.name)));
-    }
-    query += &*filters_str.iter().map(|s| &**s)
-        .collect::<Vec<&str>>()
-        .join("AND ");
-    Ok(query)
-}
-
-pub fn collect_row_to_json<'stmt>(columns: Vec<String>, table: &Table, rows: Rows<'stmt>)
-                                  -> JsonValue {
-    let mut arr = vec![];
-    for r in &rows {
-        let mut map = JsonMap::new();
-        let mut i = 0;
-        while i != columns.len() {
-            let col = table.columns.get(&columns[i]).unwrap();
-            let val = cvt::row_field_to_json_value(&r, i, col.is_nullable, col.data_type.clone());
-            map.insert(columns[i].clone(), val);
-            i += 1;
-        }
-        let val = JsonValue::Object(map);
-        arr.push(val);
-    }
-
-    return JsonValue::Array(arr);
-}
-
-fn validate_columns(table: &Table, columns: &Vec<String>) -> Option<Error> {
-    for c in columns {
-        if !table.columns.contains_key(c) {
-            return Some(Error::UnknowColumn(c.to_string(), table.name.clone()));
-        }
-    }
-    return None;
 }
 
 pub fn generate_limit(query: String, queries: &Queries) -> Result<String, Error> {
@@ -126,18 +75,46 @@ pub fn generate_order(mut query: String, table: &Table, queries: &Queries) -> St
     }
 }
 
+pub fn collect_row_to_json<'stmt>(columns: Vec<String>, table: &Table, rows: Rows<'stmt>)
+                                  -> JsonValue {
+    let mut arr = vec![];
+    for r in &rows {
+        let mut map = JsonMap::new();
+        let mut i = 0;
+        while i != columns.len() {
+            let col = table.columns.get(&columns[i]).unwrap();
+            let val = cvt::row_field_to_json_value(&r, i, col.is_nullable, col.data_type.clone());
+            map.insert(columns[i].clone(), val);
+            i += 1;
+        }
+        let val = JsonValue::Object(map);
+        arr.push(val);
+    }
+
+    return JsonValue::Array(arr);
+}
+
+fn validate_columns(table: &Table, columns: &Vec<String>) -> Option<Error> {
+    for c in columns {
+        if !table.columns.contains_key(c) {
+            return Some(Error::UnknowColumn(c.to_string(), table.name.clone()));
+        }
+    }
+    return None;
+}
+
 pub fn query(conn: &Connection, table: &Table, queries: &Queries)
-             -> Result<JsonValue, Error> {
+             -> Result<Option<JsonValue>, Error> {
     let query = String::new();
     let (query, columns) = generate_select(query, table, queries)?;
-    let query = generate_from(query, &*table.name);
-    let query = generate_where(query, table, queries)?;
+    let query = common::generate_from(query, &*table.name);
+    let query = common::generate_where(query, table, queries)?;
     let query = generate_order(query, table, queries);
     let query = generate_limit(query, queries)?;
     let query = generate_offset(query, queries)?;
     debug!("query is: {}", query);
     match conn.query(&*query, &[]) {
-        Ok(rows) => Ok(collect_row_to_json(columns, table, rows)),
+        Ok(rows) => Ok(Some(collect_row_to_json(columns, table, rows))),
         Err(e) => Err(Error::InternalError("internal database error".into()))
     }
 }
