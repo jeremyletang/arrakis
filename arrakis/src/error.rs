@@ -17,6 +17,7 @@ pub enum Error {
     InvalidColumnType(String, String, String),
     UnknowModel(String),
     UnknowColumn(String, String),
+    InvalidInputError(String),
     InternalError(String),
 }
 
@@ -30,6 +31,7 @@ impl error::Error for Error {
             Error::InvalidColumnType(..) => "invalid type for column",
             Error::UnknowModel(..) => "unknow model",
             Error::UnknowColumn(..) => "unknow column",
+            Error::InvalidInputError(..) => "invalid input",
             Error::InternalError(..) => "internal error",
         }
     }
@@ -42,7 +44,7 @@ impl error::Error for Error {
 impl fmt::Display for Error {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            Error::NotFound(ref s) => write!(fmt, "model not found '{}'", s),
+            Error::NotFound(ref s) => write!(fmt, "table not found '{}'", s),
             Error::InvalidFilter(ref s) => write!(fmt, "invalid or unknown filter '{}'", s),
             Error::InvalidFilterSyntax(ref s) => write!(fmt, "{}", s),
             Error::InvalidFilterType(ref col, ref expected) =>
@@ -53,7 +55,8 @@ impl fmt::Display for Error {
             },
             Error::UnknowModel(ref s) => write!(fmt, "table '{}' do not exist", s),
             Error::UnknowColumn(ref c, ref m) =>
-                write!(fmt, "column '{}' do not exist for model '{}'", c, m),
+                write!(fmt, "column '{}' do not exist for table '{}'", c, m),
+            Error::InvalidInputError(ref s) => write!(fmt, "invalid input: {}", s),
             Error::InternalError(ref s) => write!(fmt, "internal error, {}", s),
         }
     }

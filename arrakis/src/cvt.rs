@@ -10,7 +10,7 @@ use postgres::types::{FromSql, Type};
 use serde_json::value::{Value, ToJson};
 use serde::Serialize;
 
-fn to_json<T>(row: &Row, idx: usize, is_nullable: bool) -> Value
+pub fn to_json<T>(row: &Row, idx: usize, is_nullable: bool) -> Value
     where T: ToJson + FromSql + Serialize {
     if is_nullable {
         let value: Option<T> = row.get(idx);
@@ -34,4 +34,18 @@ pub fn row_field_to_json_value(row: &Row, idx: usize, is_nullable: bool, ty: Typ
         Type::Text => to_json::<String>(row, idx, is_nullable),
         _ => unimplemented!()
     }
+}
+
+pub fn json_value_to_string(v: &Value) -> String {
+    use serde_json::Value::*;
+    match v {
+        &Null => "NULL".to_string(),
+        &Bool(b) => b.to_string(),
+        &I64(i) => i.to_string(),
+        &U64(u) => u.to_string(),
+        &F64(f) => f.to_string(),
+        &String(ref s) => s.clone(),
+        _ => unimplemented!(),
+    }
+
 }

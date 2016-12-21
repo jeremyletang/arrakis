@@ -19,15 +19,17 @@ extern crate serde_json;
 pub mod config;
 pub mod common;
 pub mod cvt;
-pub mod delete;
 pub mod error;
 pub mod filters;
-pub mod get;
 pub mod infer_schema;
 pub mod method;
 pub mod ordering;
 pub mod queries;
 pub mod schema;
+
+pub mod delete;
+pub mod get;
+pub mod patch;
 
 use config::Config;
 use error::Error;
@@ -99,19 +101,25 @@ impl Arrakis {
     pub fn post(&self, model: &str, queries: &Queries, body: String)
                 -> Result<Option<Value>, Error> {
         self.model_exists(model)?;
+        let body = read_json(&body)?;
         return Ok(Some(Value::Bool(true)));
     }
 
     pub fn put(&self, model: &str, queries: &Queries, body: String)
                -> Result<Option<Value>, Error> {
         self.model_exists(model)?;
+        let body = read_json(&body)?;
         return Ok(Some(Value::Bool(true)));
     }
 
     pub fn patch(&self, model: &str, queries: &Queries, body: String)
                  -> Result<Option<Value>, Error> {
         self.model_exists(model)?;
-        return Ok(Some(Value::Bool(true)));
+        let body = read_json(&body)?;
+        patch::query(&*(self.conn.get().unwrap()),
+                     self.tables.get(model).unwrap(),
+                     queries,
+                     body)
     }
 
     pub fn delete(&self, model: &str, queries: &Queries)
@@ -129,5 +137,12 @@ impl Arrakis {
             return Err(Error::UnknowModel(model.into()));
         }
         return Ok(());
+    }
+}
+
+fn read_json(s: &str) -> Result<Value, Error> {
+    match serde_json::from_str(s) {
+        Ok(v) => Ok(v),
+        Err(e) => Err(Error::InvalidInputError(format!("{}", e))),
     }
 }

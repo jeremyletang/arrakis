@@ -8,6 +8,7 @@
 use error::Error;
 use queries::{FetchQueries, Queries};
 use schema::Table;
+use serde_json::Value;
 
 pub fn generate_from(query: String, table_name: &str) -> String {
     format!("{} FROM {}", query, table_name)
@@ -31,4 +32,19 @@ pub fn generate_where(mut query: String, table: &Table, queries: &Queries)
         .collect::<Vec<&str>>()
         .join("AND ");
     Ok(query)
+}
+
+pub fn validate_table_fields(table: &Table, val: &Value) -> Result<(), Error> {
+    match val {
+        &Value::Object(ref m) => {
+            // TODO(JEREMY): ensure the types match with the db types
+            for (k, _) in m {
+                if !table.columns.contains_key(k) {
+                    return Err(Error::UnknowColumn(k.clone(), table.name.clone()));
+                }
+            }
+            Ok(())
+        },
+        _ => Err(Error::InvalidInputError("expect json object as top level value".into()))
+    }
 }

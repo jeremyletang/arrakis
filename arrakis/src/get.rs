@@ -75,6 +75,16 @@ pub fn generate_order(mut query: String, table: &Table, queries: &Queries) -> St
     }
 }
 
+pub fn collect_ids<'stmt>(rows: Rows<'stmt>) -> JsonValue {
+    let mut arr = vec![];
+    for r in &rows {
+        // here we now columns should always contains at least
+        // one element, which is the id.
+        arr.push(cvt::row_field_to_json_value(&r, 0, false, r.columns()[0].type_().clone()))
+    }
+    return JsonValue::Array(arr);
+}
+
 pub fn collect_row_to_json<'stmt>(columns: Vec<String>, table: &Table, rows: Rows<'stmt>)
                                   -> JsonValue {
     let mut arr = vec![];

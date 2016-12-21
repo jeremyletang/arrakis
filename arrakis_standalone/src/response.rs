@@ -15,14 +15,9 @@ use std::io::Write;
 
 pub fn ar_error_to_status_code(ar_err: ArError) -> StatusCode {
     match ar_err {
-        ArError::InvalidFilter(..) => StatusCode::BadRequest,
-        ArError::InvalidFilterType(..) => StatusCode::BadRequest,
-        ArError::InvalidFilterSyntax(..) => StatusCode::BadRequest,
-        ArError::InvalidColumnType(..) => StatusCode::BadRequest,
-        ArError::NotFound(..) => StatusCode::NotFound,
-        ArError::UnknowModel(..) => StatusCode::BadRequest,
-        ArError::UnknowColumn(..) => StatusCode::BadRequest,
         ArError::InternalError(..) => StatusCode::InternalServerError,
+        ArError::NotFound(..) => StatusCode::NotFound,
+        _ => StatusCode::BadRequest,
     }
 }
 
