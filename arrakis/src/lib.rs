@@ -30,6 +30,7 @@ pub mod schema;
 pub mod delete;
 pub mod get;
 pub mod patch;
+pub mod post;
 
 use config::Config;
 use error::Error;
