@@ -10,10 +10,11 @@
 
 extern crate arrakis;
 extern crate clap;
-extern crate env_logger;
+extern crate futures;
 extern crate hyper;
 #[macro_use]
 extern crate log;
+extern crate pretty_env_logger;
 extern crate serde;
 extern crate serde_json;
 extern crate time as std_time;
@@ -21,16 +22,16 @@ extern crate unicase;
 
 use arrakis::Arrakis;
 use arrakis::config::Config;
-use cors::Cors;
+// use cors::Cors;
 use clap::{App, Arg};
 use handler::ArrakisHandler;
-use hyper::Server;
-use metrics::Metrics;
+use hyper::server::Http;
+// use metrics::Metrics;
 
-mod cors;
+//mod cors;
 mod handler;
 mod response;
-mod metrics;
+//mod metrics;
 
 const DEFAULT_HTTP_ADDR: &'static str = "0.0.0.0:1492";
 
@@ -84,7 +85,7 @@ fn split_list(l: Option<&String>) -> Vec<&str> {
 }
 
 fn main() {
-    let _ = env_logger::init();
+    let _ = pretty_env_logger::init();
     let args = parse_cmdline();
 
     let config = Config::builder()
@@ -100,13 +101,17 @@ fn main() {
 
     info!("this instance will manage the following tables: {}",
           auto.get_tables().iter().map(|(t, _)| &**t).collect::<Vec<&str>>().join(", "));
-    info!("starting autorest server at {}", &*args.addr);
     let handler = ArrakisHandler::new(auto);
-    let handler = Cors::new(handler);
+    // let handler = Cors::new(handler);
+
+    let server = Http::new().bind(&(args.addr.parse().unwrap()), handler).unwrap();
+    println!("Arrakis listening on http://{}", server.local_addr().unwrap());
+    server.run().unwrap();
+
     if !args.disable_metrics {
-        let handler = Metrics::new(handler);
-        Server::http(&*args.addr).unwrap().handle(handler).unwrap();
+        //let handler = Metrics::new(handler);
+        //Server::http(&*args.addr).unwrap().handle(handler).unwrap();
     } else {
-        Server::http(&*args.addr).unwrap().handle(handler).unwrap();
+        //Server::http(&*args.addr).unwrap().handle(handler).unwrap();
     }
 }

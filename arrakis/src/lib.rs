@@ -46,6 +46,7 @@ use std::time::Duration;
 pub use postgres::params::{
     ConnectParams, IntoConnectParams, UserInfo, ConnectTarget};
 
+#[derive(Clone)]
 pub struct Arrakis {
     conn: r2d2::Pool<PostgresConnectionManager>,
     tables: HashMap<String, Table>,

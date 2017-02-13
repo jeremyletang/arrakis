@@ -5,8 +5,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use hyper::server::{Handler, Request, Response};
-use hyper::method::Method;
+use hyper::server::{Http, Service, Request, Response};
+use hyper::Method;
 use hyper::header::{AccessControlAllowOrigin, ContentLength, CacheControl,
                     AccessControlAllowHeaders, AccessControlAllowMethods,
                     CacheDirective};
@@ -38,7 +38,7 @@ impl<H> Cors<H>
         res.headers_mut().set(
             AccessControlAllowMethods(vec![
                 Method::Get, Method::Put, Method::Post,
-                Method::Delete, Method::Options, Method::Patch
+                Mehod::Delete, Method::Options, Method::Patch
             ])
         );
         res.headers_mut().set(

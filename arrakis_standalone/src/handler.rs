@@ -8,13 +8,14 @@
 use arrakis::Arrakis;
 use arrakis::queries::Queries;
 use arrakis::method::Method as ArMethod;
+use futures::{Stream, Future};
+use futures::future::BoxFuture;
 use hyper::status::StatusCode;
-use hyper::method::Method;
-use hyper::server::{Handler, Request, Response};
-use hyper::uri::RequestUri;
-use std::io::Read;
-use response::{write_ar_response, write_error_response};
+use hyper::{self, Method};
+use hyper::server::{NewService, Service, Request, Response};
+use response::{write_arrakis_response, write_error_response};
 
+#[derive(Clone)]
 pub struct ArrakisHandler {
     ar: Arrakis,
 }
@@ -27,56 +28,69 @@ impl ArrakisHandler {
     }
 }
 
-impl Handler for ArrakisHandler {
-    fn handle(&self, mut req: Request, res: Response) {
-        let body = read_body(&mut req);
-        match req.uri {
-            RequestUri::AbsolutePath(s) => {
-                let (model, queries) = parse_queries(&*s);
-                let model = model.trim_matches('/');
-                match hyper_method_to_autorest_method(&req.method) {
-                    Some(m) => {
-                        let ar_res = match m {
-                            ArMethod::Get => self.ar.get(model, &queries),
-                            ArMethod::Post => self.ar.post(model, &queries, body),
-                            ArMethod::Put => self.ar.put(model, &queries, body),
-                            ArMethod::Patch => self.ar.patch(model, &queries, body),
-                            ArMethod::Delete => self.ar.delete(model, &queries),
-                        };
-                        write_ar_response(res, ar_res);
-                    },
-                    None => {
-                        let estr = format!("method not allowed {}", &req.method);
-                        write_error_response(res, &*estr, StatusCode::MethodNotAllowed);
-                    }
-                };
-            },
-            _ => write_error_response(res, "unable to parse url", StatusCode::BadRequest)
-        };
+impl Service for ArrakisHandler {
+    type Request = Request;
+    type Response = Response;
+    type Error = hyper::Error;
+    type Future = BoxFuture<Response, hyper::Error>;
+
+    fn call(&self, req: Request) -> Self::Future {
+        // read body
+        let arrakis = self.ar.clone();
+        let (method, uri, _, _, _body) = req.deconstruct();
+        _body.fold(vec![], move |mut acc, chunk| {
+            acc.extend_from_slice(chunk.as_ref());
+            Ok::<_, hyper::Error>(acc)
+        }).and_then(move |v| {
+            let body: String = unsafe { String::from_utf8_unchecked(v.clone()) };
+            let queries = parse_queries(uri.query().unwrap_or(""));
+            let model = uri.path().trim_matches('/');
+            match hyper_method_to_autorest_method(&method) {
+                Some(m) => {
+                    Ok(write_arrakis_response(
+                        match m {
+                            ArMethod::Get => arrakis.get(model, &queries),
+                            ArMethod::Post => arrakis.post(model, &queries, body),
+                            ArMethod::Put => arrakis.put(model, &queries, body),
+                            ArMethod::Patch => arrakis.patch(model, &queries, body),
+                            ArMethod::Delete => arrakis.delete(model, &queries),
+                        })
+                    )
+                },
+                None => {
+                    let estr = format!("method not allowed {}", &method);
+                    Ok(write_error_response(&*estr, StatusCode::MethodNotAllowed))
+                }
+            }
+        }).boxed()
     }
 }
 
-fn parse_queries(path: &str) -> (&str, Queries) {
-    match path.find('?') {
-        Some(pos) => {
-            let (begin, end) = path.split_at(pos+1);
-            let path = &(begin[..begin.len()-1]);
-            match end.len() {
-                0 => (path, Default::default()),
-                _ => {
-                    (path, end.split('&').collect::<Vec<&str>>().iter().map(|&s| {
-                        match s.find('=') {
-                            Some(pos) => {
-                                let (b, e) = s.split_at(pos+1);
-                                (&(b[..b.len()-1]), e)
-                            },
-                            None => (s, "")
-                        }
-                    }).collect::<Queries>())
+impl NewService for ArrakisHandler {
+    type Request = Request;
+    type Response = Response;
+    type Error = hyper::Error;
+    type Instance = ArrakisHandler;
+
+    fn new_service(&self) -> ::std::io::Result<ArrakisHandler> {
+        Ok(self.clone())
+    }
+}
+
+fn parse_queries(queries: &str) -> Queries {
+    match queries.len() {
+        0 => Default::default(),
+        _ => {
+            queries.split('&').collect::<Vec<&str>>().iter().map(|&s| {
+                match s.find('=') {
+                    Some(pos) => {
+                        let (b, e) = s.split_at(pos+1);
+                        (&(b[..b.len()-1]), e)
+                    },
+                    None => (s, "")
                 }
-            }
-        },
-        None => (path, Default::default())
+            }).collect::<Queries>()
+        }
     }
 }
 
@@ -89,10 +103,4 @@ fn hyper_method_to_autorest_method(m: &Method) -> Option<ArMethod> {
         &Method::Delete => Some(ArMethod::Delete),
         _ => None,
     }
-}
-
-fn read_body(req: &mut Request) -> String {
-    let mut buf = String::new();
-    let _ = req.read_to_string(&mut buf);
-    return buf;
 }

@@ -24,8 +24,8 @@ pub fn generate_into(query: String, table: &Table, val: &Value) -> String {
     let intos: Vec<String> = m.iter().map(|(k, _)| {
         format!("{}", k)
     }).collect();
-    let intos = fields.iter().map(Deref::deref).collect::<Vec<&str>>().join(", ");
-    format!("{} INTO {} ({})", query, table.name, intos);
+    let intos = intos.iter().map(Deref::deref).collect::<Vec<&str>>().join(", ");
+    format!("{} INTO {} ({})", query, table.name, intos)
 }
 
 pub fn generate_values(query: String, table: &Table, val: &Value) -> Result<String, Error> {
@@ -43,11 +43,11 @@ pub fn generate_returning(query: String) -> String {
 
 pub fn query(conn: &Connection, table: &Table, queries: &Queries, val: Value)
              -> Result<Option<Value>, Error> {
-    common::validate_table_fields(table, val)?;
+    common::validate_table_fields(table, &val)?;
     // here we know this is an object
     // it would have not passed the previous check if it was not.
     let query = generate_insert();
-    let query = generate_into(query, table, &val)
+    let query = generate_into(query, table, &val);
     let query = generate_values(query, table, &val)?;
     let query = generate_returning(query);
     debug!("arrakis query: {}", query);

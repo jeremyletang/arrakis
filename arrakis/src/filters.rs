@@ -117,7 +117,7 @@ impl Filter {
             LT => Ok(LesserThan(name.to_string(), value.to_string())),
             NE => Ok(NotEqual(name.to_string(), value.to_string())),
             LIKE => Ok(Like(name.to_string(), value.replace('*', "%"))),
-            ILIKE => Ok(Like(name.to_string(), value.replace('*', "%"))),
+            ILIKE => Ok(ILike(name.to_string(), value.replace('*', "%"))),
             IN => Ok(In(
                 name.to_string(),
                 value.split(',').map(|s| s.into()).collect::<Vec<String>>())
