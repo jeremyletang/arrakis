@@ -35,6 +35,7 @@ pub mod post;
 use config::Config;
 use error::Error;
 use infer_schema::infer_schema;
+use method::Method;
 use queries::Queries;
 use r2d2_postgres::{TlsMode, PostgresConnectionManager};
 use schema::Table;
@@ -93,6 +94,17 @@ impl Arrakis {
 
     pub fn get_tables(&self) -> &HashMap<String, Table> {
         return &self.tables;
+    }
+
+    pub fn any(&self, method: &Method, model: &str, queries: &Queries, body: String)
+               -> Result<Option<Value>, Error> {
+        match *method {
+            Method::Get => self.get(model, queries),
+            Method::Post => self.post(model, queries, body),
+            Method::Put => self.put(model, queries, body),
+            Method::Patch => self.patch(model, queries, body),
+            Method::Delete => self.delete(model, queries),
+        }
     }
 
     pub fn get(&self, model: &str, queries: &Queries) -> Result<Option<Value>, Error> {

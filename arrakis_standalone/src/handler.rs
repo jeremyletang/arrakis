@@ -7,7 +7,7 @@
 
 use arrakis::Arrakis;
 use arrakis::queries::Queries;
-use arrakis::method::Method as ArMethod;
+use arrakis::method::Method as ArrakisMethod;
 use futures::{Stream, Future};
 use futures::future::BoxFuture;
 use hyper::status::StatusCode;
@@ -45,18 +45,8 @@ impl Service for ArrakisHandler {
             let body: String = unsafe { String::from_utf8_unchecked(v.clone()) };
             let queries = parse_queries(uri.query().unwrap_or(""));
             let model = uri.path().trim_matches('/');
-            match hyper_method_to_autorest_method(&method) {
-                Some(m) => {
-                    Ok(write_arrakis_response(
-                        match m {
-                            ArMethod::Get => arrakis.get(model, &queries),
-                            ArMethod::Post => arrakis.post(model, &queries, body),
-                            ArMethod::Put => arrakis.put(model, &queries, body),
-                            ArMethod::Patch => arrakis.patch(model, &queries, body),
-                            ArMethod::Delete => arrakis.delete(model, &queries),
-                        })
-                    )
-                },
+            match arrakis_of_hyper_method(&method) {
+                Some(m) => Ok(write_arrakis_response(arrakis.any(&m, model, &queries, body))),
                 None => {
                     let estr = format!("method not allowed {}", &method);
                     Ok(write_error_response(&*estr, StatusCode::MethodNotAllowed))
@@ -94,13 +84,13 @@ fn parse_queries(queries: &str) -> Queries {
     }
 }
 
-fn hyper_method_to_autorest_method(m: &Method) -> Option<ArMethod> {
+fn arrakis_of_hyper_method(m: &Method) -> Option<ArrakisMethod> {
     match m {
-        &Method::Get => Some(ArMethod::Get),
-        &Method::Post => Some(ArMethod::Post),
-        &Method::Put => Some(ArMethod::Put),
-        &Method::Patch => Some(ArMethod::Patch),
-        &Method::Delete => Some(ArMethod::Delete),
+        &Method::Get => Some(ArrakisMethod::Get),
+        &Method::Post => Some(ArrakisMethod::Post),
+        &Method::Put => Some(ArrakisMethod::Put),
+        &Method::Patch => Some(ArrakisMethod::Patch),
+        &Method::Delete => Some(ArrakisMethod::Delete),
         _ => None,
     }
 }
