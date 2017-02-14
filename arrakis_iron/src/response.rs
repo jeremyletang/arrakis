@@ -14,7 +14,7 @@ use iron::Response;
 use serde_json::Value as JsonValue;
 use serde_json::Map as JsonMap;
 
-pub fn ar_error_to_status(ar_err: ArError) -> Status {
+pub fn arrakis_error_to_status(ar_err: ArError) -> Status {
     match ar_err {
         ArError::InvalidFilter(..) => Status::BadRequest,
         ArError::InvalidFilterType(..) => Status::BadRequest,
@@ -24,6 +24,7 @@ pub fn ar_error_to_status(ar_err: ArError) -> Status {
         ArError::UnknowModel(..) => Status::BadRequest,
         ArError::UnknowColumn(..) => Status::BadRequest,
         ArError::InternalError(..) => Status::InternalServerError,
+        _ => Status::BadRequest,
     }
 }
 
@@ -41,15 +42,18 @@ pub fn make_error_response(estr: &str) -> Vec<u8> {
     ::serde_json::ser::to_vec(&value).unwrap()
 }
 
-pub fn make_ar_response(ar_res: Result<JsonValue, ArError>) -> (Vec<u8>, Status) {
+pub fn make_arrakis_response(ar_res: Result<Option<JsonValue>, ArError>) -> (Vec<u8>, Status) {
     match ar_res {
-        Ok(jv) => (make_success_response(jv), Status::Ok),
-        Err(e) => (make_error_response(&*format!("{}", e)), ar_error_to_status(e))
+        Ok(jv) => match jv {
+            Some(v) => (make_success_response(v), Status::Ok),
+            None => (vec![], Status::NoContent),
+        },
+        Err(e) => (make_error_response(&*format!("{}", e)), arrakis_error_to_status(e))
     }
 }
 
-pub fn write_ar_response(ar_res: Result<JsonValue, ArError>) -> Response {
-    let (body, code) = make_ar_response(ar_res);
+pub fn write_arrakis_response(ar_res: Result<Option<JsonValue>, ArError>) -> Response {
+    let (body, code) = make_arrakis_response(ar_res);
     return write_response(&*body, code)
 }
 

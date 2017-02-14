@@ -14,12 +14,13 @@ extern crate serde_json;
 mod response;
 
 use arrakis::Arrakis;
-use arrakis::method::Method as ArMethod;
+use arrakis::method::Method as ArrakisMethod;
 use arrakis::queries::queries_from_hashmap;
 use iron::{Handler, IronResult, Request, Response, Url, Plugin};
 use iron::request::Body;
 use iron::method::Method;
 use iron::status::Status;
+use response::{write_arrakis_response, write_error_response};
 use std::io::Read;
 use urlencoded::UrlEncodedQuery;
 use std::collections::HashMap;
@@ -53,7 +54,7 @@ impl Handler for ArrakisHandler {
 
         let qmap = match req.get::<UrlEncodedQuery>() {
             Ok(hashmap) => hashmap,
-            Err(ref e) =>
+            Err(_) =>
                 // return Ok(response::write_error_response(
                 // &format!("unable to read queries: {}", e),
                 //    Status::InternalServerError)),
@@ -61,32 +62,23 @@ impl Handler for ArrakisHandler {
         };
         let queries = queries_from_hashmap(&qmap);
 
-        match iron_method_to_arrakis_method(&req.method) {
-            Some(m) => {
-                let arrakis_res = match m {
-                    ArMethod::Get => self.ar.get(&*model, &queries),
-                    ArMethod::Post => self.ar.post(&*model, &queries, body),
-                    ArMethod::Put => self.ar.put(&*model, &queries, body),
-                    ArMethod::Patch => self.ar.patch(&*model, &queries, body),
-                    ArMethod::Delete => self.ar.delete(&*model, &queries),
-                };
-                Ok(response::write_ar_response(arrakis_res))
-            },
+        match arrakis_of_iron_method(&req.method) {
+            Some(m) => Ok(write_arrakis_response(self.ar.any(&m, &*model, &queries, body))),
             None => {
                 let estr = format!("method not allowed {}", &req.method);
-                Ok(response::write_error_response(&*estr, Status::MethodNotAllowed))
+                Ok(write_error_response(&*estr, Status::MethodNotAllowed))
             }
         }
     }
 }
 
-fn iron_method_to_arrakis_method(m: &Method) -> Option<ArMethod> {
+fn arrakis_of_iron_method(m: &Method) -> Option<ArrakisMethod> {
     match m {
-        &Method::Get => Some(ArMethod::Get),
-        &Method::Post => Some(ArMethod::Post),
-        &Method::Put => Some(ArMethod::Put),
-        &Method::Patch => Some(ArMethod::Patch),
-        &Method::Delete => Some(ArMethod::Delete),
+        &Method::Get => Some(ArrakisMethod::Get),
+        &Method::Post => Some(ArrakisMethod::Post),
+        &Method::Put => Some(ArrakisMethod::Put),
+        &Method::Patch => Some(ArrakisMethod::Patch),
+        &Method::Delete => Some(ArrakisMethod::Delete),
         _ => None,
     }
 }
