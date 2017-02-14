@@ -44,13 +44,17 @@ impl Service for ArrakisService {
         }).and_then(move |v| {
             let body: String = unsafe { String::from_utf8_unchecked(v.clone()) };
             let queries = parse_queries(uri.query().unwrap_or(""));
-            let model = uri.path().trim_matches('/');
-            match arrakis_of_hyper_method(&method) {
-                Some(m) => Ok(write_arrakis_response(arrakis.any(&m, model, &queries, body))),
-                None => {
-                    let estr = format!("method not allowed {}", &method);
-                    Ok(write_error_response(&*estr, StatusCode::MethodNotAllowed))
-                }
+            let path = uri.path().trim_matches('/').split("/").collect::<Vec<&str>>();
+            match *path {
+                ["builtins", builtin] => Ok(serve_builtins(builtin, arrakis)),
+                ["api", model] => match arrakis_of_hyper_method(&method) {
+                    Some(m) => Ok(write_arrakis_response(arrakis.any(&m, model, &queries, body))),
+                    None => {
+                        let estr = format!("method not allowed {}", &method);
+                        Ok(write_error_response(&*estr, StatusCode::MethodNotAllowed))
+                    }
+                },
+                _ => Ok(write_error_response("not found", StatusCode::NotFound))
             }
         }).boxed()
     }
@@ -64,6 +68,18 @@ impl NewService for ArrakisService {
 
     fn new_service(&self) -> ::std::io::Result<ArrakisService> {
         Ok(self.clone())
+    }
+}
+
+fn serve_builtins(builtin: &str, arrakis: Arrakis) -> Response {
+    match builtin {
+        "docs" => {
+            write_error_response("builtins not supported", StatusCode::MethodNotAllowed)
+        },
+        _ => {
+            let estr = format!("unknown builtin {}", builtin);
+            write_error_response(&*estr, StatusCode::BadRequest)
+        }
     }
 }
 
