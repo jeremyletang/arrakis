@@ -1,0 +1,8 @@
+FROM debian:latest
+MAINTAINER Jeremy Letang <letang.jeremy@gmail.com>
+
+RUN apt-get update && apt-get install -y libpq-dev
+ADD ./target/release/arrakis_standalone /arrakis_standalone
+ENV RUST_LOG=info
+
+ENTRYPOINT ["/arrakis_standalone"]
