@@ -38,7 +38,8 @@ impl<S> Service for Metrics<S>
         self.service.call(req)
             .and_then(move |res| {
                 let delta = precise_time_ns() - before;
-                info!("request from {} to {} {} in {} ms",
+                info!("[{}] request from {} to {} {} in {} ms",
+                      ::std_time::now().rfc3339(),
                       addr,
                       method,
                       uri,
