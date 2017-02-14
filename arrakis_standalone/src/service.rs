@@ -16,19 +16,19 @@ use hyper::server::{NewService, Service, Request, Response};
 use response::{write_arrakis_response, write_error_response};
 
 #[derive(Clone)]
-pub struct ArrakisHandler {
+pub struct ArrakisService {
     ar: Arrakis,
 }
 
-impl ArrakisHandler {
-    pub fn new(ar: Arrakis) -> ArrakisHandler {
-        return ArrakisHandler {
+impl ArrakisService {
+    pub fn new(ar: Arrakis) -> ArrakisService {
+        return ArrakisService {
             ar: ar,
         }
     }
 }
 
-impl Service for ArrakisHandler {
+impl Service for ArrakisService {
     type Request = Request;
     type Response = Response;
     type Error = hyper::Error;
@@ -56,13 +56,13 @@ impl Service for ArrakisHandler {
     }
 }
 
-impl NewService for ArrakisHandler {
+impl NewService for ArrakisService {
     type Request = Request;
     type Response = Response;
     type Error = hyper::Error;
-    type Instance = ArrakisHandler;
+    type Instance = ArrakisService;
 
-    fn new_service(&self) -> ::std::io::Result<ArrakisHandler> {
+    fn new_service(&self) -> ::std::io::Result<ArrakisService> {
         Ok(self.clone())
     }
 }

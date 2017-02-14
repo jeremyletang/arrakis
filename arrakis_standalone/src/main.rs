@@ -24,15 +24,15 @@ use arrakis::Arrakis;
 use arrakis::config::Config;
 use cors::Cors;
 use clap::{App, Arg};
-use handler::ArrakisHandler;
+use service::ArrakisService;
 use hyper::server::Http;
 use metrics::Metrics;
 use hyper::server::NewService;
 
 mod cors;
-mod handler;
-mod response;
 mod metrics;
+mod response;
+mod service;
 
 const DEFAULT_HTTP_ADDR: &'static str = "0.0.0.0:1492";
 
@@ -95,15 +95,15 @@ fn main() {
         .included(split_list(args.include.as_ref()))
         .build();
 
-    let auto = match Arrakis::with_config(&*args.pq_addr, config) {
+    let arrakis = match Arrakis::with_config(&*args.pq_addr, config) {
         Ok(auto) => auto,
         Err(e) => { println!("error: {}", e); return; },
     };
 
     info!("this instance will manage the following tables: {}",
-          auto.get_tables().iter().map(|(t, _)| &**t).collect::<Vec<&str>>().join(", "));
-    let handler = ArrakisHandler::new(auto);
-    let cors = move || Ok(Cors::new(handler.new_service().unwrap()));
+          arrakis.get_tables().iter().map(|(t, _)| &**t).collect::<Vec<&str>>().join(", "));
+    let arrakis_service = ArrakisService::new(arrakis);
+    let cors = move || Ok(Cors::new(arrakis_service.new_service().unwrap()));
 
     info!("Arrakis listening on http://{}", args.addr);
     if !args.disable_metrics {

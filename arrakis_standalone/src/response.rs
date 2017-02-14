@@ -5,7 +5,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use arrakis::error::Error as ArError;
+use arrakis::error::Error as ArrakisError;
 use hyper::header::ContentLength;
 use hyper::status::StatusCode;
 use hyper::server::Response as HyperResponse;
@@ -13,10 +13,10 @@ use hyper::Body;
 use serde_json::Value as JsonValue;
 use serde_json::Map as JsonMap;
 
-pub fn ar_error_to_status_code(ar_err: ArError) -> StatusCode {
+pub fn arrakis_error_to_status_code(ar_err: ArrakisError) -> StatusCode {
     match ar_err {
-        ArError::InternalError(..) => StatusCode::InternalServerError,
-        ArError::NotFound(..) => StatusCode::NotFound,
+        ArrakisError::InternalError(..) => StatusCode::InternalServerError,
+        ArrakisError::NotFound(..) => StatusCode::NotFound,
         _ => StatusCode::BadRequest,
     }
 }
@@ -35,17 +35,17 @@ pub fn make_error_response(estr: &str) -> Vec<u8> {
     ::serde_json::ser::to_vec(&value).unwrap()
 }
 
-pub fn make_arrakis_response(ar_res: Result<Option<JsonValue>, ArError>) -> (Vec<u8>, StatusCode) {
+pub fn make_arrakis_response(ar_res: Result<Option<JsonValue>, ArrakisError>) -> (Vec<u8>, StatusCode) {
     match ar_res {
         Ok(jv) => match jv {
             Some(v) => (make_success_response(v), StatusCode::Ok),
             None => (vec![], StatusCode::NoContent),
         },
-        Err(e) => (make_error_response(&*format!("{}", e)), ar_error_to_status_code(e))
+        Err(e) => (make_error_response(&*format!("{}", e)), arrakis_error_to_status_code(e))
     }
 }
 
-pub fn write_arrakis_response(ar_res: Result<Option<JsonValue>, ArError>)
+pub fn write_arrakis_response(ar_res: Result<Option<JsonValue>, ArrakisError>)
                               -> HyperResponse {
     let (body, code) = make_arrakis_response(ar_res);
     let len = body.len();
