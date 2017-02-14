@@ -22,16 +22,17 @@ extern crate unicase;
 
 use arrakis::Arrakis;
 use arrakis::config::Config;
-// use cors::Cors;
+use cors::Cors;
 use clap::{App, Arg};
 use handler::ArrakisHandler;
 use hyper::server::Http;
-// use metrics::Metrics;
+use metrics::Metrics;
+use hyper::server::NewService;
 
-//mod cors;
+mod cors;
 mod handler;
 mod response;
-//mod metrics;
+mod metrics;
 
 const DEFAULT_HTTP_ADDR: &'static str = "0.0.0.0:1492";
 
@@ -102,16 +103,13 @@ fn main() {
     info!("this instance will manage the following tables: {}",
           auto.get_tables().iter().map(|(t, _)| &**t).collect::<Vec<&str>>().join(", "));
     let handler = ArrakisHandler::new(auto);
-    // let handler = Cors::new(handler);
+    let cors = move || Ok(Cors::new(handler.new_service().unwrap()));
 
-    let server = Http::new().bind(&(args.addr.parse().unwrap()), handler).unwrap();
-    println!("Arrakis listening on http://{}", server.local_addr().unwrap());
-    server.run().unwrap();
-
+    info!("Arrakis listening on http://{}", args.addr);
     if !args.disable_metrics {
-        //let handler = Metrics::new(handler);
-        //Server::http(&*args.addr).unwrap().handle(handler).unwrap();
+        let metrics = move || Ok(Metrics::new(cors().unwrap()));
+        Http::new().bind(&(args.addr.parse().unwrap()), metrics).unwrap().run().unwrap();
     } else {
-        //Server::http(&*args.addr).unwrap().handle(handler).unwrap();
-    }
+        Http::new().bind(&(args.addr.parse().unwrap()), cors).unwrap().run().unwrap();
+    };
 }
