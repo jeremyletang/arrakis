@@ -122,7 +122,7 @@ pub fn query(conn: &Connection, table: &Table, queries: &Queries)
     let query = generate_order(query, table, queries);
     let query = generate_limit(query, queries)?;
     let query = generate_offset(query, queries)?;
-    debug!("query is: {}", query);
+    debug!("arrakis query: {}", query);
     match conn.query(&*query, &[]) {
         Ok(rows) => Ok(Some(collect_row_to_json(columns, table, rows))),
         Err(e) => Err(Error::InternalError("internal database error".into()))

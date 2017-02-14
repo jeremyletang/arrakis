@@ -10,10 +10,11 @@
 
 extern crate arrakis;
 extern crate clap;
-extern crate env_logger;
+extern crate futures;
 extern crate hyper;
 #[macro_use]
 extern crate log;
+extern crate pretty_env_logger;
 extern crate serde;
 extern crate serde_json;
 extern crate time as std_time;
@@ -24,8 +25,9 @@ use arrakis::config::Config;
 use cors::Cors;
 use clap::{App, Arg};
 use handler::ArrakisHandler;
-use hyper::Server;
+use hyper::server::Http;
 use metrics::Metrics;
+use hyper::server::NewService;
 
 mod cors;
 mod handler;
@@ -84,7 +86,7 @@ fn split_list(l: Option<&String>) -> Vec<&str> {
 }
 
 fn main() {
-    let _ = env_logger::init();
+    let _ = pretty_env_logger::init();
     let args = parse_cmdline();
 
     let config = Config::builder()
@@ -100,13 +102,14 @@ fn main() {
 
     info!("this instance will manage the following tables: {}",
           auto.get_tables().iter().map(|(t, _)| &**t).collect::<Vec<&str>>().join(", "));
-    info!("starting autorest server at {}", &*args.addr);
     let handler = ArrakisHandler::new(auto);
-    let handler = Cors::new(handler);
+    let cors = move || Ok(Cors::new(handler.new_service().unwrap()));
+
+    info!("Arrakis listening on http://{}", args.addr);
     if !args.disable_metrics {
-        let handler = Metrics::new(handler);
-        Server::http(&*args.addr).unwrap().handle(handler).unwrap();
+        let metrics = move || Ok(Metrics::new(cors().unwrap()));
+        Http::new().bind(&(args.addr.parse().unwrap()), metrics).unwrap().run().unwrap();
     } else {
-        Server::http(&*args.addr).unwrap().handle(handler).unwrap();
-    }
+        Http::new().bind(&(args.addr.parse().unwrap()), cors).unwrap().run().unwrap();
+    };
 }

@@ -20,7 +20,7 @@ pub fn query(conn: &Connection, table: &Table, queries: &Queries)
     let query = generate_delete();
     let query = common::generate_from(query, &*table.name);
     let query = common::generate_where(query, table, queries)?;
-    debug!("query is: {}", query);
+    debug!("arrakis query: {}", query);
     match conn.query(&*query, &[]) {
         Ok(_) => Ok(()),
         Err(e) => Err(Error::InternalError("internal database error".into()))

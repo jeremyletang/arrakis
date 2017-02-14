@@ -6,9 +6,10 @@ authors = ["jeremyletang <letang.jeremy@gmail.com>"]
 [dependencies]
 arrakis = { path = "../arrakis" }
 clap = "2.19.0"
-env_logger = "0.3.4"
-hyper = "0.9.12"
+futures = "0.1.7"
+hyper = { git = "https://github.com/hyperium/hyper" }
 log = "0.3.6"
+pretty_env_logger = "0.1.0"
 serde = "0.8.18"
 serde_json = "0.8.3"
 serde_derive = "0.8.18"

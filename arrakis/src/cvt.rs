@@ -32,7 +32,7 @@ pub fn row_field_to_json_value(row: &Row, idx: usize, is_nullable: bool, ty: Typ
         Type::Float8 => to_json::<f64>(row, idx, is_nullable),
         Type::Varchar => to_json::<String>(row, idx, is_nullable),
         Type::Text => to_json::<String>(row, idx, is_nullable),
-        _ => unimplemented!()
+        _ => Value::String("".to_string()),
     }
 }
 

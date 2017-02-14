@@ -15,21 +15,20 @@ use serde_json::Value;
 use std::ops::Deref;
 use get;
 
-/*
-UPDATE Customers
-SET City='Hamburg'
-WHERE CustomerID=1;
- */
-
-pub fn generate_update(table: &Table) -> String {
-    format!("UPDATE {}", table.name)
+pub fn generate_insert() -> String {
+    format!("INSERT")
 }
 
-pub fn generate_set(query: String, table: &Table, val: &Value) -> Result<String, Error> {
-    let fields_str = String::new();
-    common::validate_table_fields(table, val)?;
-    // here we know this is an object
-    // it would have not passed the previous check if it was not.
+pub fn generate_into(query: String, table: &Table, val: &Value) -> String {
+    let m = val.as_object().unwrap();
+    let intos: Vec<String> = m.iter().map(|(k, _)| {
+        format!("{}", k)
+    }).collect();
+    let intos = intos.iter().map(Deref::deref).collect::<Vec<&str>>().join(", ");
+    format!("{} INTO {} ({})", query, table.name, intos)
+}
+
+pub fn generate_values(query: String, table: &Table, val: &Value) -> Result<String, Error> {
     let m = val.as_object().unwrap();
     let fields: Vec<String> = m.iter().map(|(k, v)| {
         format!("{}='{}'", k, cvt::json_value_to_string(v))
@@ -44,9 +43,12 @@ pub fn generate_returning(query: String) -> String {
 
 pub fn query(conn: &Connection, table: &Table, queries: &Queries, val: Value)
              -> Result<Option<Value>, Error> {
-    let query = generate_update(table);
-    let query = generate_set(query, table, &val)?;
-    let query = common::generate_where(query, table, queries)?;
+    common::validate_table_fields(table, &val)?;
+    // here we know this is an object
+    // it would have not passed the previous check if it was not.
+    let query = generate_insert();
+    let query = generate_into(query, table, &val);
+    let query = generate_values(query, table, &val)?;
     let query = generate_returning(query);
     debug!("arrakis query: {}", query);
     match conn.query(&*query, &[]) {

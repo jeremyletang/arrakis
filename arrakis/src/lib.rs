@@ -30,6 +30,7 @@ pub mod schema;
 pub mod delete;
 pub mod get;
 pub mod patch;
+pub mod post;
 
 use config::Config;
 use error::Error;
@@ -45,6 +46,7 @@ use std::time::Duration;
 pub use postgres::params::{
     ConnectParams, IntoConnectParams, UserInfo, ConnectTarget};
 
+#[derive(Clone)]
 pub struct Arrakis {
     conn: r2d2::Pool<PostgresConnectionManager>,
     tables: HashMap<String, Table>,
