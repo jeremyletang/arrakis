@@ -23,7 +23,7 @@ use arrakis::Arrakis;
 use arrakis::config::Config;
 use cors::Cors;
 use clap::{App, Arg};
-use service::ArrakisService;
+use service::{ArrakisService, Conf};
 use hyper::server::Http;
 use metrics::Metrics;
 use hyper::server::NewService;
@@ -41,6 +41,7 @@ struct CmdLineArgs {
     pub disable_metrics: bool,
     pub include: Option<String>,
     pub exclude: Option<String>,
+    pub with_docs: bool,
 }
 
 fn parse_cmdline() -> CmdLineArgs {
@@ -68,6 +69,9 @@ fn parse_cmdline() -> CmdLineArgs {
         .arg(Arg::with_name("disable-metrics")
              .long("disable-metrics")
              .help("disable metrics logging middleware"))
+        .arg(Arg::with_name("with-docs")
+             .long("with-docs")
+             .help("with builtin docs endpoint"))
         .get_matches();
 
     CmdLineArgs {
@@ -76,6 +80,7 @@ fn parse_cmdline() -> CmdLineArgs {
         disable_metrics: matches.is_present("disable-metrics"),
         include: matches.value_of("include").map_or(None, |s| Some(s.into())),
         exclude: matches.value_of("exclude").map_or(None, |s| Some(s.into())),
+        with_docs: matches.is_present("with-docs"),
     }
 }
 
@@ -101,7 +106,7 @@ fn main() {
 
     info!("this instance will manage the following tables: {}",
           arrakis.get_tables().iter().map(|(t, _)| &**t).collect::<Vec<&str>>().join(", "));
-    let arrakis_service = ArrakisService::new(arrakis);
+    let arrakis_service = ArrakisService::with_conf(arrakis, Conf{with_docs: args.with_docs});
     let cors = move || Ok(Cors::new(arrakis_service.new_service().unwrap()));
 
     info!("Arrakis listening on http://{}", args.addr);

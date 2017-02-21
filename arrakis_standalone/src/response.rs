@@ -6,7 +6,8 @@
 // except according to those terms.
 
 use arrakis::error::Error as ArrakisError;
-use hyper::header::ContentLength;
+use hyper::header::{ContentLength, ContentType};
+use hyper::mime::{Mime, TopLevel, SubLevel};
 use hyper::status::StatusCode;
 use hyper::server::Response as HyperResponse;
 use hyper::Body;
@@ -61,7 +62,14 @@ pub fn write_error_response(estr: &str, code: StatusCode)
 
 fn write_response<T: Into<Body>>(body: T, len: u64, code: StatusCode)
                   -> HyperResponse {
-    HyperResponse::new().with_header(ContentLength(len))
+    HyperResponse::new()
+        .with_header(ContentLength(len))
+        .with_header(
+            ContentType(
+                Mime(TopLevel::Application, SubLevel::Json, vec![])
+            )
+        )
         .with_status(code)
         .with_body(body.into())
+
 }

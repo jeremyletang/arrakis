@@ -10,20 +10,36 @@ use arrakis::queries::Queries;
 use arrakis::method::Method as ArrakisMethod;
 use futures::{Stream, Future};
 use futures::future::BoxFuture;
-use hyper::status::StatusCode;
+use hyper::header::{ContentType, ContentLength};
+use hyper::mime::{Mime, TopLevel, SubLevel};
 use hyper::{self, Method};
+use hyper::status::StatusCode;
 use hyper::server::{NewService, Service, Request, Response};
 use response::{write_arrakis_response, write_error_response};
 
-#[derive(Clone)]
+#[derive(Debug, Default, Clone)]
+pub struct Conf {
+    pub with_docs: bool,
+}
+
+#[derive(Debug, Clone)]
 pub struct ArrakisService {
     ar: Arrakis,
+    conf: Conf,
 }
 
 impl ArrakisService {
-    pub fn new(ar: Arrakis) -> ArrakisService {
+    pub fn new(arrakis: Arrakis) -> ArrakisService {
         return ArrakisService {
-            ar: ar,
+            ar: arrakis,
+            conf: Default::default(),
+        }
+    }
+
+    pub fn with_conf(arrakis: Arrakis, conf: Conf) -> ArrakisService {
+        return ArrakisService {
+            ar: arrakis,
+            conf: conf,
         }
     }
 }
@@ -37,6 +53,7 @@ impl Service for ArrakisService {
     fn call(&self, req: Request) -> Self::Future {
         // read body
         let arrakis = self.ar.clone();
+        let conf = self.conf.clone();
         let (method, uri, _, _, _body) = req.deconstruct();
         _body.fold(vec![], move |mut acc, chunk| {
             acc.extend_from_slice(chunk.as_ref());
@@ -46,7 +63,7 @@ impl Service for ArrakisService {
             let queries = parse_queries(uri.query().unwrap_or(""));
             let path = uri.path().trim_matches('/').split("/").collect::<Vec<&str>>();
             match *path {
-                ["builtins", builtin] => Ok(serve_builtins(builtin, arrakis)),
+                ["builtins", builtin] => Ok(serve_builtins(builtin, arrakis, conf)),
                 ["api", model] => match arrakis_of_hyper_method(&method) {
                     Some(m) => Ok(write_arrakis_response(arrakis.any(&m, model, &queries, body))),
                     None => {
@@ -71,11 +88,20 @@ impl NewService for ArrakisService {
     }
 }
 
-fn serve_builtins(builtin: &str, arrakis: Arrakis) -> Response {
+fn execute_docs_builtins(arrakis: Arrakis) -> Response {
+    let response_body = arrakis.make_doc();
+    let len = response_body.len() as u64;
+    Response::new()
+        .with_header(ContentLength(len))
+        .with_header(ContentType(Mime(TopLevel::Text, SubLevel::Html, vec![])))
+        .with_status(StatusCode::Ok)
+        .with_body(response_body)
+
+}
+
+fn serve_builtins(builtin: &str, arrakis: Arrakis, conf: Conf) -> Response {
     match builtin {
-        "docs" => {
-            write_error_response("builtins not supported", StatusCode::MethodNotAllowed)
-        },
+        "docs" => execute_docs_builtins(arrakis),
         _ => {
             let estr = format!("unknown builtin {}", builtin);
             write_error_response(&*estr, StatusCode::BadRequest)

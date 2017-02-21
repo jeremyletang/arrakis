@@ -61,13 +61,7 @@ impl<S> Cors<S>
     fn handle_others(&self, req: Request) -> BoxFuture<Response, hyper::Error> {
         self.service.call(req)
             .and_then(move |res| {
-                Ok(res.with_header(AccessControlAllowOrigin::Any)
-                   .with_header(
-                       ContentType(
-                           Mime(TopLevel::Application, SubLevel::Json, vec![])
-                       )
-                   )
-                )
+                Ok(res.with_header(AccessControlAllowOrigin::Any))
             }).boxed()
     }
 }

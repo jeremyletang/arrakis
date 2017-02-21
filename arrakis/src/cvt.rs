@@ -21,6 +21,10 @@ pub fn to_json<T>(row: &Row, idx: usize, is_nullable: bool) -> Value
     }
 }
 
+pub fn timestamp_to_json(row: &Row, idx: usize, is_nullable: bool) -> Value {
+    return Value::I64(42);
+}
+
 pub fn row_field_to_json_value(row: &Row, idx: usize, is_nullable: bool, ty: Type) -> Value {
     match ty {
         Type::Bool => to_json::<bool>(row, idx, is_nullable),
@@ -32,6 +36,7 @@ pub fn row_field_to_json_value(row: &Row, idx: usize, is_nullable: bool, ty: Typ
         Type::Float8 => to_json::<f64>(row, idx, is_nullable),
         Type::Varchar => to_json::<String>(row, idx, is_nullable),
         Type::Text => to_json::<String>(row, idx, is_nullable),
+        Type::Timestamp => timestamp_to_json(row, idx, is_nullable),
         _ => Value::String("".to_string()),
     }
 }
@@ -47,5 +52,20 @@ pub fn json_value_to_string(v: &Value) -> String {
         &String(ref s) => s.clone(),
         _ => unimplemented!(),
     }
+}
 
+pub fn postgres_to_json_type(ty: &Type) -> &'static str {
+    match *ty {
+        Type::Bool => "boolean",
+        Type::Char => "string",
+        Type::Int2 => "number",
+        Type::Int4 => "number",
+        Type::Int8 => "number",
+        Type::Float4 => "number",
+        Type::Float8 => "number",
+        Type::Varchar => "string",
+        Type::Text => "string",
+        Type::Timestamp => "number",
+        _ => "unknown",
+    }
 }
