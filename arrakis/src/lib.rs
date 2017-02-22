@@ -28,11 +28,13 @@ pub mod queries;
 pub mod schema;
 
 pub mod delete;
+mod doc_consts;
 pub mod get;
 pub mod patch;
 pub mod post;
 
 use config::Config;
+use doc_consts as dc;
 use error::Error;
 use infer_schema::infer_schema;
 use method::Method;
@@ -154,7 +156,7 @@ impl Arrakis {
     }
 
     pub fn make_doc(&self) -> String {
-        format!("{}\n{}", BASE_DOC, self.generate_table_doc())
+        format!("{}\n{}\n{}", dc::DOC_BASE, self.generate_table_doc(), dc::DOC_END)
     }
 
     fn generate_table_doc(&self) -> String {
@@ -164,60 +166,12 @@ impl Arrakis {
                 format!("    <tr><td>{}</td><td>{}</td><td>{}</td></tr>",
                         c.name, c.data_type, cvt::postgres_to_json_type(&c.data_type))
             }).collect::<Vec<String>>().join("\n");
-            s = format!("{}\n<h3>/api/{}</h3>\n{}{}{}", s, k, TABLE_HEADER, trs, TABLE_FOOTER);
+            s = format!("{}\n<h3>/api/{}</h3>\n{}{}{}",
+                        s, k, dc::TABLE_HEADER, trs, dc::TABLE_FOOTER);
         }
         return s;
     }
 }
-
-const BASE_DOC: &'static str = "
-<h2>Selecting fields</h2>
-<p>You can easily control what is return by the api, just specify the fields list you want inside the json response using the <i>select</i> query parameter:</p>
-<code>https://myapi.com/mymodel?select=id,name</code> <br/>
-<p>This call will return a json list of objects mymodel, with only the id and name fields.</p>
-<h2>Availables filters</h2>
-<table>
-  <thread>
-    <tr>
-      <th>Name</th>
-      <th>SQL</th>
-      <th>Syntax</th>
-    </tr>
-  </thread>
-  <tbody>
-    <tr><td>eq</td><td>=</td><td>myfield=eq.ARRAKIS</td></tr>
-    <tr><td>gte</td><td>>=</td><td>myfield=gte.42</td></tr>
-    <tr><td>ge</td><td>></td><td>myfield=gt.42</td></tr>
-    <tr><td>lte</td><td><=</td><td>myfield=lte.42</td></tr>
-    <tr><td>le</td><td><</td><td>myfield=lt.42</td></tr>
-    <tr><td>ne</td><td>!=</td><td>myfield=ne.ARRAKIS</td></tr>
-    <tr><td>like</td><td>LIKE</td><td>myfield=like.*42</td></tr>
-    <tr><td>ilike</td><td>ILIKE</td><td>myfield=ilike.*ARRAKIS*</td></tr>
-    <tr><td>in</td><td>IN</td><td>myfield=in.21,42,82</td></tr>
-    <tr><td>notin</td><td>NOT IN</td><td>myfield=notin.42</td></tr>
-    <tr><td>is</td><td>IS</td><td>myfield=is.STMT (accepted statement TRUE, FALSE, NULL)</td></tr>
-    <tr><td>isnot</td><td>IS NOT</td><td>myfield=isnot.STMT (accepted statement TRUE, FALSE, NULL)</td></tr>
-    <tr><td>not</td><td>NOT</td><td>myfield=not.eq.42</td></tr>
-  </tbody>
-<table>
-";
-
-const TABLE_HEADER: &'static str = "
-<table>
-  <thread>
-    <tr>
-      <th>Field</th>
-      <th>Postgres type</th>
-      <th>JSON type</th>
-    </tr>
-  </thread>
-  <tbody>
-";
-
-const TABLE_FOOTER: &'static str = "
-  </tbody>
-</table>
-";
 
 fn read_json(s: &str) -> Result<Value, Error> {
     match serde_json::from_str(s) {
